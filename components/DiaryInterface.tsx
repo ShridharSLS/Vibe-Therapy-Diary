@@ -34,7 +34,10 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
   const [cards, setCards] = useState<Card[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [controlsOpen, setControlsOpen] = useState(true);
+  const [controlsOpen, setControlsOpen] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true; // SSR default
+    return window.innerWidth >= 768; // open on desktop (md breakpoint), collapsed on mobile
+  });
   const [undoStack, setUndoStack] = useState<Card[][]>([]);
   const [redoStack, setRedoStack] = useState<Card[][]>([]);
 
