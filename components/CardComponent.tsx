@@ -159,12 +159,9 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange }: Card
               onClick={handleTopicEdit}
               className="group cursor-pointer p-2 rounded-lg hover:bg-white/50 transition-colors"
             >
-              <div className="flex items-start justify-between">
-                <h2 className="text-xl font-bold text-gray-900 leading-tight">
+              <h2 className="text-xl font-bold text-gray-900 leading-tight">
                   {card.topic || 'Click to add topic...'}
                 </h2>
-                <Edit3 size={16} className="text-gray-400 group-hover:text-gray-600 mt-1 ml-2 flex-shrink-0" />
-              </div>
             </div>
           )}
         </div>
@@ -244,8 +241,7 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange }: Card
             onClick={handleBodyEdit}
             className="group cursor-pointer p-4 rounded-lg hover:bg-white/50 transition-colors min-h-[200px]"
           >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
+            <div className="flex-1">
                 {card.bodyText ? (
                   <div className="text-gray-800 leading-relaxed whitespace-pre-wrap">
                     {card.bodyText}
@@ -256,20 +252,11 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange }: Card
                   </div>
                 )}
               </div>
-              <Edit3 size={16} className="text-gray-400 group-hover:text-gray-600 ml-2 flex-shrink-0" />
-            </div>
           </div>
         )}
       </div>
 
-      {/* Character Count (when not editing) */}
-      {!isEditingBody && card.bodyText && (
-        <div className="px-6 pb-4">
-          <div className="text-xs text-gray-500 text-right">
-            {getTextLength(card.bodyText)}/{CHARACTER_LIMIT} characters
-          </div>
-        </div>
-      )}
+      {/* Character count only shown when editing */}
     </motion.div>
   );
 }
