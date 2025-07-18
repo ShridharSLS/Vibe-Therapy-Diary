@@ -196,6 +196,8 @@ export default function CardComponent({ card, onUpdate }: CardComponentProps) {
               value={bodyValue}
               onChange={(e) => setBodyValue(e.target.value)}
               onKeyDown={(e) => handleKeyDown(e, handleBodySave, handleBodyCancel)}
+              onTouchStart={(e) => e.stopPropagation()}
+              onTouchMove={(e) => e.stopPropagation()}
               className={`w-full bg-white/80 border-2 rounded-lg p-4 resize-none focus:outline-none h-64 max-h-[60vh] overflow-y-auto ${
                 isOverLimit ? 'border-red-300 focus:border-red-500' : 'border-gray-300 focus:border-purple-500'
               }`}
