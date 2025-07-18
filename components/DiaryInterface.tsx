@@ -22,6 +22,7 @@ import {
   duplicateCard 
 } from '@/lib/database';
 import CardComponent from './CardComponent';
+import { sanitizeHtml } from '@/lib/sanitize';
 import toast from 'react-hot-toast';
 
 interface DiaryInterfaceProps {
@@ -164,6 +165,10 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
 
   const handleCardUpdate = async (cardId: string, updates: Partial<Card>) => {
     try {
+      // Sanitize HTML content if bodyText is being updated
+      if (updates.bodyText) {
+        updates.bodyText = sanitizeHtml(updates.bodyText);
+      }
       await updateCard(cardId, updates);
     } catch (error) {
       console.error('Error updating card:', error);

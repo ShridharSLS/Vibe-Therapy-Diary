@@ -5,7 +5,6 @@ import { motion } from 'framer-motion';
 import { Edit3, Check, X, Bold, Italic, List } from 'lucide-react';
 import { Card, CardType } from '@/lib/types';
 import { getTextLength } from '@/lib/utils';
-import DOMPurify from 'dompurify';
 import toast from 'react-hot-toast';
 import dynamic from 'next/dynamic';
 
@@ -264,7 +263,7 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange }: Card
                 {card.bodyText ? (
                   <div 
                     className="text-gray-800 leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(card.bodyText) }}
+                    dangerouslySetInnerHTML={{ __html: card.bodyText }}
                   />
                 ) : (
                   <div className="text-gray-500 italic">
