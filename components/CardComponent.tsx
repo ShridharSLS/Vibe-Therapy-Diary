@@ -20,6 +20,7 @@ export default function CardComponent({ card, onUpdate }: CardComponentProps) {
   const [topicValue, setTopicValue] = useState(card.topic);
   const [bodyValue, setBodyValue] = useState(card.bodyText);
   const [typeValue, setTypeValue] = useState<CardType>(card.type);
+  const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false);
   
   const topicRef = useRef<HTMLTextAreaElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
@@ -72,6 +73,7 @@ export default function CardComponent({ card, onUpdate }: CardComponentProps) {
   };
 
   const handleTypeChange = (newType: CardType) => {
+    setIsTypeMenuOpen(false);
     setTypeValue(newType);
     onUpdate(card.id, { type: newType });
   };
@@ -111,21 +113,7 @@ export default function CardComponent({ card, onUpdate }: CardComponentProps) {
     >
       {/* Card Header */}
       <div className="p-6 pb-4">
-        {/* Type Selector */}
-        <div className="flex gap-2 mb-4">
-          <button
-            onClick={() => handleTypeChange('Before')}
-            className={getTypeButtonClass('Before')}
-          >
-            Before
-          </button>
-          <button
-            onClick={() => handleTypeChange('After')}
-            className={getTypeButtonClass('After')}
-          >
-            After
-          </button>
-        </div>
+        
 
         {/* Topic Section */}
         <div className="mb-4">
@@ -168,6 +156,33 @@ export default function CardComponent({ card, onUpdate }: CardComponentProps) {
                 <Edit3 size={16} className="text-gray-400 group-hover:text-gray-600 mt-1 ml-2 flex-shrink-0" />
               </div>
             </div>
+          )}
+        </div>
+
+        {/* Type Indicator / Menu */}
+        <div className="px-6 mb-4">
+          {isTypeMenuOpen ? (
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleTypeChange('Before')}
+                className={getTypeButtonClass('Before')}
+              >
+                Before
+              </button>
+              <button
+                onClick={() => handleTypeChange('After')}
+                className={getTypeButtonClass('After')}
+              >
+                After
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setIsTypeMenuOpen(true)}
+              className={`${getTypeButtonClass(typeValue)} shadow`}
+            >
+              {typeValue}
+            </button>
           )}
         </div>
       </div>
