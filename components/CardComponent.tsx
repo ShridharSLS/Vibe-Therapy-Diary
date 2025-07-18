@@ -262,7 +262,7 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange }: Card
             <div className="flex-1">
                 {card.bodyText ? (
                   <div 
-                    className="text-gray-800 leading-relaxed"
+                    className="text-gray-800 leading-relaxed rich-text-content"
                     dangerouslySetInnerHTML={{ __html: card.bodyText }}
                   />
                 ) : (
