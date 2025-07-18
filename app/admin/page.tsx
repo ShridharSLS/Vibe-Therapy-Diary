@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Lock, Eye, Search, Download, Settings, ExternalLink } from 'lucide-react';
 import { getAllDiaries } from '@/lib/database';
+import { verifyPassword, changePassword } from '@/lib/adminAuth';
 import { Diary } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -54,17 +55,15 @@ export default function AdminPage() {
     setIsValidating(true);
 
     try {
-      // In a real app, this would be validated against a secure backend
-      // For now, we'll use the environment variable
-      const adminPassword = process.env.ADMIN_PASSWORD || 'Password';
-      
-      if (password === adminPassword) {
+      const ok = await verifyPassword(password);
+      if (ok) {
         setIsAuthenticated(true);
         toast.success('Admin access granted');
       } else {
         toast.error('Invalid password');
       }
     } catch (error) {
+      console.error(error);
       toast.error('Authentication failed');
     } finally {
       setIsValidating(false);
@@ -84,11 +83,16 @@ export default function AdminPage() {
       return;
     }
 
-    // In a real app, this would update the password in a secure backend
-    toast.success('Password changed successfully (Note: This is a demo - password not actually changed)');
-    setShowChangePassword(false);
-    setNewPassword('');
-    setConfirmPassword('');
+    try {
+      await changePassword(newPassword);
+      toast.success('Password updated');
+      setShowChangePassword(false);
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update password');
+    }
   };
 
   const exportToCSV = () => {

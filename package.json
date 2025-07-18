@@ -12,6 +12,7 @@
     "firebase:emulators": "npx firebase emulators:start"
   },
   "dependencies": {
+    "bcryptjs": "^2.4.3",
     "firebase": "^9.23.0",
     "framer-motion": "^10.16.16",
     "lucide-react": "^0.294.0",
