@@ -2,10 +2,16 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Edit3, Check, X } from 'lucide-react';
+import { Edit3, Check, X, Bold, Italic, List } from 'lucide-react';
 import { Card, CardType } from '@/lib/types';
 import { getTextLength } from '@/lib/utils';
+import DOMPurify from 'dompurify';
 import toast from 'react-hot-toast';
+import dynamic from 'next/dynamic';
+
+// Import ReactQuill dynamically to avoid SSR issues
+const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
+import 'react-quill/dist/quill.snow.css';
 
 interface CardComponentProps {
   card: Card;
@@ -24,7 +30,8 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange }: Card
   const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false);
   
   const topicRef = useRef<HTMLTextAreaElement>(null);
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  // Use forwardRef with ReactQuill
+  const bodyRef = useRef<any>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const queueSnapshot = () => {
@@ -137,7 +144,10 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange }: Card
               <textarea
                 ref={topicRef}
                 value={topicValue}
-                onChange={(e) => { setTopicValue(e.target.value); queueSnapshot(); }}
+                onChange={(e) => {
+                  setTopicValue(e.target.value);
+                  queueSnapshot();
+                }}
                 onKeyDown={(e) => handleKeyDown(e, handleTopicSave, handleTopicCancel)}
                 className="w-full text-xl font-bold bg-transparent border-2 border-gray-300 rounded-lg p-3 resize-none focus:outline-none focus:border-purple-500"
                 rows={2}
@@ -203,18 +213,22 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange }: Card
       <div className="px-6 pb-6">
         {isEditingBody ? (
           <div className="space-y-2">
-            <textarea
-              ref={bodyRef}
-              value={bodyValue}
-              onChange={(e) => { setBodyValue(e.target.value); queueSnapshot(); }}
-              onKeyDown={(e) => handleKeyDown(e, handleBodySave, handleBodyCancel)}
-              onTouchStart={(e) => e.stopPropagation()}
-              onTouchMove={(e) => e.stopPropagation()}
-              className={`w-full bg-white/80 border-2 rounded-lg p-4 resize-none focus:outline-none h-64 max-h-[60vh] overflow-y-auto ${
-                isOverLimit ? 'border-red-300 focus:border-red-500' : 'border-gray-300 focus:border-purple-500'
-              }`}
-              placeholder="Enter your thoughts..."
-            />
+            <div className="rich-text-editor-container">
+              <ReactQuill
+                theme="snow"
+                value={bodyValue}
+                onChange={(content) => { setBodyValue(content); queueSnapshot(); }}
+                className={`bg-white/80 ${isOverLimit ? 'quill-error' : ''}`}
+                placeholder="Enter your thoughts..."
+                modules={{
+                  toolbar: [
+                    ['bold', 'italic'],
+                    [{ 'list': 'bullet' }]
+                  ]
+                }}
+                formats={['bold', 'italic', 'list', 'bullet']}
+              />
+            </div>
             <div className="flex items-center justify-between">
               <div className="flex gap-2">
                 <button
@@ -248,9 +262,10 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange }: Card
           >
             <div className="flex-1">
                 {card.bodyText ? (
-                  <div className="text-gray-800 leading-relaxed whitespace-pre-wrap">
-                    {card.bodyText}
-                  </div>
+                  <div 
+                    className="text-gray-800 leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(card.bodyText) }}
+                  />
                 ) : (
                   <div className="text-gray-500 italic">
                     Click to add your thoughts...

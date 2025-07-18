@@ -67,9 +67,17 @@ export const copyToClipboard = async (text: string): Promise<boolean> => {
 
 // Character count for rich text (strip HTML tags)
 export const getTextLength = (html: string): number => {
-  const div = document.createElement('div');
-  div.innerHTML = html;
-  return div.textContent?.length || 0;
+  if (!html) return 0;
+  
+  // Handle client-side only
+  if (typeof document !== 'undefined') {
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    return div.textContent?.length || 0;
+  }
+  
+  // Fallback for server-side
+  return html.replace(/<[^>]*>/g, '').length;
 };
 
 // Truncate text with ellipsis

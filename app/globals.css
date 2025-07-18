@@ -38,6 +38,38 @@ a {
   }
 }
 
+/* Rich Text Editor Styles */
+.rich-text-editor-container {
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.rich-text-editor-container .ql-toolbar {
+  border-top-left-radius: 0.5rem;
+  border-top-right-radius: 0.5rem;
+  background-color: #f9fafb;
+  border-color: #e5e7eb;
+}
+
+.rich-text-editor-container .ql-container {
+  border-bottom-left-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+  border-color: #e5e7eb;
+  min-height: 150px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.rich-text-editor-container .ql-editor {
+  min-height: 150px;
+  font-family: 'Inter', sans-serif;
+  font-size: 1rem;
+}
+
+.quill-error .ql-container {
+  border-color: #f87171;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
