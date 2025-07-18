@@ -88,9 +88,9 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
 
   // Live text change from CardComponent
   const handleLiveTextChange = (cardId: string, updates: Partial<Card>) => {
-    const updatedCards = cards.map(c => (c.id === cardId ? { ...c, ...updates } : c));
-    setCards(updatedCards);
-    pushTextSnapshot(updatedCards);
+    // Don't update cards array while editing to prevent cursor jumping
+    // Just record the snapshot for undo/redo history
+    pushTextSnapshot(cards.map(c => (c.id === cardId ? { ...c, ...updates } : c)));
   };
 
   const handleRedo = () => {

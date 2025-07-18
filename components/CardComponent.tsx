@@ -36,10 +36,16 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange }: Card
   };
 
   useEffect(() => {
-    setTopicValue(card.topic);
-    setBodyValue(card.bodyText);
+    // Only update from props if we're not actively editing
+    // This prevents cursor jumping when typing
+    if (!isEditingTopic) {
+      setTopicValue(card.topic);
+    }
+    if (!isEditingBody) {
+      setBodyValue(card.bodyText);
+    }
     setTypeValue(card.type);
-  }, [card]);
+  }, [card, isEditingTopic, isEditingBody]);
 
   const handleTopicEdit = () => {
     setIsEditingTopic(true);
@@ -52,8 +58,9 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange }: Card
   };
 
   const handleTopicSave = () => {
-    if (topicValue.trim() !== card.topic) {
-      onUpdate(card.id, { topic: topicValue.trim() });
+    // Only update if content actually changed
+    if (topicValue !== card.topic) {
+      onUpdate(card.id, { topic: topicValue });
     }
     setIsEditingTopic(false);
   };
@@ -64,15 +71,13 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange }: Card
   };
 
   const handleBodySave = () => {
-    const textLength = getTextLength(bodyValue);
-    
-    if (textLength > CHARACTER_LIMIT) {
-      toast.error(`Please shorten text to ${CHARACTER_LIMIT} characters or less`);
+    if (isOverLimit) {
+      toast.error(`Please keep text under ${CHARACTER_LIMIT} characters`);
       return;
     }
-    
-    if (bodyValue.trim() !== card.bodyText) {
-      onUpdate(card.id, { bodyText: bodyValue.trim() });
+    // Only update if content actually changed
+    if (bodyValue !== card.bodyText) {
+      onUpdate(card.id, { bodyText: bodyValue });
     }
     setIsEditingBody(false);
   };
