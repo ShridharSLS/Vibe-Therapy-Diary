@@ -40,6 +40,10 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
   });
   const [undoStack, setUndoStack] = useState<Card[][]>([]);
   const [redoStack, setRedoStack] = useState<Card[][]>([]);
+  // Fine-grained text-level stacks (array snapshots for simplicity)
+  const [textUndoStack, setTextUndoStack] = useState<Card[][]>([]);
+  const [textRedoStack, setTextRedoStack] = useState<Card[][]>([]);
+  
 
   // Real-time subscription to cards
   useEffect(() => {
@@ -62,7 +66,20 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
     setRedoStack([]); // Clear redo stack when new action is performed
   }, [cards]);
 
+  const pushTextSnapshot = useCallback((updatedCards: Card[]) => {
+    setTextUndoStack((prev) => [...prev, JSON.parse(JSON.stringify(updatedCards))]);
+    setTextRedoStack([]);
+  }, []);
+
   const handleUndo = () => {
+    if (textUndoStack.length > 0) {
+      const prev = textUndoStack[textUndoStack.length - 1];
+      setTextUndoStack((prevStack) => prevStack.slice(0, -1));
+      setTextRedoStack((r) => [...r, JSON.parse(JSON.stringify(cards))]);
+      setCards(prev);
+      return;
+    }
+
     if (undoStack.length > 0) {
       const previousState = undoStack[undoStack.length - 1];
       setRedoStack(prev => [cards, ...prev.slice(0, 9)]);
@@ -71,7 +88,22 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
     }
   };
 
+  // Live text change from CardComponent
+  const handleLiveTextChange = (cardId: string, updates: Partial<Card>) => {
+    const updatedCards = cards.map(c => (c.id === cardId ? { ...c, ...updates } : c));
+    setCards(updatedCards);
+    pushTextSnapshot(updatedCards);
+  };
+
   const handleRedo = () => {
+    if (textRedoStack.length > 0) {
+      const next = textRedoStack[textRedoStack.length - 1];
+      setTextRedoStack((r) => r.slice(0, -1));
+      setTextUndoStack((u) => [...u, JSON.parse(JSON.stringify(cards))]);
+      setCards(next);
+      return;
+    }
+
     if (redoStack.length > 0) {
       const nextState = redoStack[0];
       setUndoStack(prev => [...prev.slice(-9), cards]);
@@ -290,6 +322,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
                 <CardComponent
                   card={currentCard}
                   onUpdate={handleCardUpdate}
+                  onLiveTextChange={handleLiveTextChange}
                 />
               </motion.div>
             ) : (

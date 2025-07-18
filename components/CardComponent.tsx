@@ -10,11 +10,12 @@ import toast from 'react-hot-toast';
 interface CardComponentProps {
   card: Card;
   onUpdate: (cardId: string, updates: Partial<Card>) => void;
+  onLiveTextChange?: (cardId: string, updates: Partial<Card>) => void;
 }
 
 const CHARACTER_LIMIT = 300;
 
-export default function CardComponent({ card, onUpdate }: CardComponentProps) {
+export default function CardComponent({ card, onUpdate, onLiveTextChange }: CardComponentProps) {
   const [isEditingTopic, setIsEditingTopic] = useState(false);
   const [isEditingBody, setIsEditingBody] = useState(false);
   const [topicValue, setTopicValue] = useState(card.topic);
@@ -24,6 +25,15 @@ export default function CardComponent({ card, onUpdate }: CardComponentProps) {
   
   const topicRef = useRef<HTMLTextAreaElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  const queueSnapshot = () => {
+    if (!onLiveTextChange) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      onLiveTextChange(card.id, { topic: topicValue, bodyText: bodyValue });
+    }, 400);
+  };
 
   useEffect(() => {
     setTopicValue(card.topic);
@@ -122,7 +132,7 @@ export default function CardComponent({ card, onUpdate }: CardComponentProps) {
               <textarea
                 ref={topicRef}
                 value={topicValue}
-                onChange={(e) => setTopicValue(e.target.value)}
+                onChange={(e) => { setTopicValue(e.target.value); queueSnapshot(); }}
                 onKeyDown={(e) => handleKeyDown(e, handleTopicSave, handleTopicCancel)}
                 className="w-full text-xl font-bold bg-transparent border-2 border-gray-300 rounded-lg p-3 resize-none focus:outline-none focus:border-purple-500"
                 rows={2}
@@ -194,7 +204,7 @@ export default function CardComponent({ card, onUpdate }: CardComponentProps) {
             <textarea
               ref={bodyRef}
               value={bodyValue}
-              onChange={(e) => setBodyValue(e.target.value)}
+              onChange={(e) => { setBodyValue(e.target.value); queueSnapshot(); }}
               onKeyDown={(e) => handleKeyDown(e, handleBodySave, handleBodyCancel)}
               onTouchStart={(e) => e.stopPropagation()}
               onTouchMove={(e) => e.stopPropagation()}
