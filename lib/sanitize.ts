@@ -1,28 +1,81 @@
 /**
  * HTML sanitization utility that works in both client and server environments
+ * Pure JavaScript implementation with no external dependencies
  */
 
-// Simple HTML tag stripping regex for server-side
+// Allowed HTML tags for rich text editor
+const ALLOWED_TAGS = ['p', 'br', 'b', 'i', 'strong', 'em', 'u', 'ul', 'ol', 'li'];
+
+// Simple HTML tag stripping regex
 const stripHtmlRegex = /<\/?[^>]+(>|$)/g;
 
 /**
- * Sanitizes HTML content safely in both client and server environments
+ * Basic HTML sanitizer that allows only specific tags
  * @param html HTML content to sanitize
  * @returns Sanitized HTML
  */
 export const sanitizeHtml = (html: string): string => {
   if (!html) return '';
   
-  // Client-side: Use DOMPurify
+  // Client-side: Use DOM for better sanitization
   if (typeof window !== 'undefined') {
-    // Dynamic import DOMPurify only on client side
-    const DOMPurify = require('dompurify');
-    return DOMPurify.sanitize(html);
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const container = doc.createElement('div');
+    
+    // Extract and sanitize content from the parsed HTML
+    const sanitizeNode = (node: Node, target: HTMLElement) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        target.appendChild(node.cloneNode(true));
+        return;
+      }
+      
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const el = node as HTMLElement;
+        const tagName = el.tagName.toLowerCase();
+        
+        // Only allow specific tags
+        if (ALLOWED_TAGS.includes(tagName)) {
+          const newEl = doc.createElement(tagName);
+          
+          // Process child nodes recursively
+          Array.from(el.childNodes).forEach(child => {
+            sanitizeNode(child, newEl);
+          });
+          
+          target.appendChild(newEl);
+        } else {
+          // For disallowed tags, just process their children
+          Array.from(el.childNodes).forEach(child => {
+            sanitizeNode(child, target);
+          });
+        }
+      }
+    };
+    
+    // Process the body content
+    Array.from(doc.body.childNodes).forEach(node => {
+      sanitizeNode(node, container);
+    });
+    
+    return container.innerHTML;
   }
   
-  // Server-side: Use basic regex sanitization
-  // This is only for rendering on server - client will re-render with DOMPurify
-  return html;
+  // Server-side: Use regex-based approach
+  // This is a simplified version that works for basic sanitization
+  // Client will re-sanitize with the DOM-based approach
+  let sanitized = html;
+  
+  // Remove all tags except allowed ones
+  const tagPattern = /<\/?([a-z][a-z0-9]*)[^>]*>/gi;
+  sanitized = sanitized.replace(tagPattern, (match, tagName) => {
+    if (ALLOWED_TAGS.includes(tagName.toLowerCase())) {
+      // Keep only the tag name and remove attributes
+      return match.replace(/\s+[^>]*/, '');
+    }
+    return '';
+  });
+  
+  return sanitized;
 };
 
 /**

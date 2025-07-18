@@ -69,14 +69,7 @@ export const copyToClipboard = async (text: string): Promise<boolean> => {
 export const getTextLength = (html: string): number => {
   if (!html) return 0;
   
-  // Import stripHtml function dynamically to avoid build issues
-  if (typeof window !== 'undefined') {
-    // Client-side
-    const { stripHtml } = require('./sanitize');
-    return stripHtml(html).length;
-  }
-  
-  // Fallback for server-side
+  // Simple HTML tag stripping for character counting
   return html.replace(/<[^>]*>/g, '').length;
 };
 
