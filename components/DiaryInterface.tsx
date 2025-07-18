@@ -252,7 +252,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
               className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
               title="Hide controls"
             >
-              <ChevronDown size={20} />
+              <ChevronUp size={20} />
             </button>
           </div>
         ) : (
@@ -262,7 +262,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
               className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
               title="Show controls"
             >
-              <ChevronUp size={20} />
+              <ChevronDown size={20} />
             </button>
           </div>
         )}
