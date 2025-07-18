@@ -10,8 +10,6 @@ import {
   Plus, 
   Copy, 
   Edit3, 
-  Undo2, 
-  Redo2, 
   Save, 
   Trash2 
 } from 'lucide-react';
@@ -254,22 +252,6 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
                 title="Duplicate Card"
               >
                 <Copy size={20} />
-              </button>
-              <button
-                onClick={handleUndo}
-                disabled={undoStack.length === 0}
-                className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                title="Undo"
-              >
-                <Undo2 size={20} />
-              </button>
-              <button
-                onClick={handleRedo}
-                disabled={redoStack.length === 0}
-                className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                title="Redo"
-              >
-                <Redo2 size={20} />
               </button>
               <button
                 onClick={handleDeleteCard}
