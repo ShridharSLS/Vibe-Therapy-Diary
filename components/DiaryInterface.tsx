@@ -5,6 +5,8 @@ import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { 
   ChevronLeft, 
   ChevronRight, 
+  ChevronDown, 
+  ChevronUp,
   Plus, 
   Copy, 
   Edit3, 
@@ -32,6 +34,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
   const [cards, setCards] = useState<Card[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [controlsOpen, setControlsOpen] = useState(true);
   const [undoStack, setUndoStack] = useState<Card[][]>([]);
   const [redoStack, setRedoStack] = useState<Card[][]>([]);
 
@@ -182,8 +185,8 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
 
       {/* Controls Bar */}
       <div className="bg-white border-b shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
+        {controlsOpen ? (
+          <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => handleSwipe('right')}
@@ -242,8 +245,27 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
                 <Trash2 size={20} />
               </button>
             </div>
+
+            {/* Collapse toggle */}
+            <button
+              onClick={() => setControlsOpen(false)}
+              className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
+              title="Hide controls"
+            >
+              <ChevronDown size={20} />
+            </button>
           </div>
-        </div>
+        ) : (
+          <div className="max-w-4xl mx-auto px-4 py-1 flex justify-center">
+            <button
+              onClick={() => setControlsOpen(true)}
+              className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
+              title="Show controls"
+            >
+              <ChevronUp size={20} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Card Display Area */}
