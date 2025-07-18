@@ -60,16 +60,69 @@ export const sanitizeHtml = (html: string): string => {
     return container.innerHTML;
   }
   
-  // Server-side: Use regex-based approach
+  // Server-side: Use a more robust regex approach that preserves list structures
   // This is a simplified version that works for basic sanitization
-  // Client will re-sanitize with the DOM-based approach
+  // Client will re-sanitize with the DOM-based approach when rendered
+  
+  // First, preserve the structure of lists by ensuring proper nesting
   let sanitized = html;
   
-  // Remove all tags except allowed ones
+  // Special handling for lists to ensure they're preserved
+  const preserveLists = (html: string): string => {
+    // We need to handle multiline content, so we'll use a different approach
+    // First, extract and preserve all list structures
+    
+    // Helper function to extract content between tags
+    const extractBetweenTags = (content: string, openTag: string, closeTag: string): string => {
+      let result = content;
+      let startIdx = result.indexOf(openTag);
+      
+      while (startIdx !== -1) {
+        const endIdx = result.indexOf(closeTag, startIdx + openTag.length);
+        if (endIdx === -1) break;
+        
+        // Get the full tag content
+        const fullTag = result.substring(startIdx, endIdx + closeTag.length);
+        // Create a clean version with just the tag name
+        const cleanTag = `${openTag}${result.substring(startIdx + openTag.length, endIdx)}${closeTag}`;
+        
+        // Replace the original with the clean version
+        result = result.substring(0, startIdx) + cleanTag + result.substring(endIdx + closeTag.length);
+        
+        // Find the next occurrence
+        startIdx = result.indexOf(openTag, startIdx + cleanTag.length);
+      }
+      
+      return result;
+    };
+    
+    // Process in the correct order: list items first, then lists
+    let result = html;
+    
+    // Clean list items first
+    result = extractBetweenTags(result, '<li>', '</li>');
+    result = extractBetweenTags(result, '<li ', '</li>');
+    
+    // Then clean lists
+    result = extractBetweenTags(result, '<ul>', '</ul>');
+    result = extractBetweenTags(result, '<ul ', '</ul>');
+    result = extractBetweenTags(result, '<ol>', '</ol>');
+    result = extractBetweenTags(result, '<ol ', '</ol>');
+    
+    return result;
+  };
+  
+  sanitized = preserveLists(sanitized);
+  
+  // Then handle other allowed tags
   const tagPattern = /<\/?([a-z][a-z0-9]*)[^>]*>/gi;
   sanitized = sanitized.replace(tagPattern, (match, tagName) => {
     if (ALLOWED_TAGS.includes(tagName.toLowerCase())) {
-      // Keep only the tag name and remove attributes
+      // For list-related tags, preserve them exactly
+      if (['ul', 'ol', 'li'].includes(tagName.toLowerCase())) {
+        return match.includes('/') ? `</${tagName}>` : `<${tagName}>`;
+      }
+      // For other tags, strip attributes but keep the tag
       return match.replace(/\s+[^>]*/, '');
     }
     return '';
