@@ -195,21 +195,24 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
     }
   };
 
-  const [animationDirection, setAnimationDirection] = useState<'forward' | 'backward'>('forward');
+  const [previousIndex, setPreviousIndex] = useState(0);
 
   const handleSwipe = (direction: 'left' | 'right') => {
+    const oldIndex = currentIndex;
     if (direction === 'left' && currentIndex < cards.length - 1) {
-      setAnimationDirection('forward'); // Going to next card
+      setPreviousIndex(oldIndex);
       setCurrentIndex(currentIndex + 1);
     } else if (direction === 'right' && currentIndex > 0) {
-      setAnimationDirection('backward'); // Going to previous card
+      setPreviousIndex(oldIndex);
       setCurrentIndex(currentIndex - 1);
     }
   };
 
-  // Get animation direction based on card sequence direction
-  const getAnimationProps = (direction: 'forward' | 'backward') => {
-    if (direction === 'forward') {
+  // Get animation direction based on index change
+  const getAnimationProps = () => {
+    const isGoingForward = currentIndex > previousIndex;
+    
+    if (isGoingForward) {
       // Going forward: next card comes from right, current exits left
       return {
         initial: { opacity: 0, x: 100 },
@@ -341,7 +344,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
             {currentCard ? (
               <motion.div
                 key={currentCard.id}
-                {...getAnimationProps(animationDirection)}
+                {...getAnimationProps()}
                 transition={{ duration: 0.3 }}
                 className="card-container"
               >
