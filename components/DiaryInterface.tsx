@@ -114,7 +114,25 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
   const handleAddCard = async () => {
     try {
       saveState();
-      const newOrder = cards.length > 0 ? Math.max(...cards.map(c => c.order)) + 1 : 0;
+      
+      // Insert new card after current card
+      let newOrder;
+      if (cards.length === 0) {
+        // If no cards exist, use order 0
+        newOrder = 0;
+      } else {
+        // Get the current card's order
+        const currentCardOrder = cards[currentIndex].order;
+        
+        // Find the next card's order (if any)
+        const nextCardIndex = currentIndex + 1;
+        const hasNextCard = nextCardIndex < cards.length;
+        const nextCardOrder = hasNextCard ? cards[nextCardIndex].order : currentCardOrder + 1;
+        
+        // Set new order between current and next card
+        newOrder = (currentCardOrder + nextCardOrder) / 2;
+      }
+      
       await createCard(
         diary.id,
         'New Topic',
@@ -122,6 +140,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
         '',
         newOrder
       );
+      
       toast.success('Card added successfully');
     } catch (error) {
       console.error('Error adding card:', error);
