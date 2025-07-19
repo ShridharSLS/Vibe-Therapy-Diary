@@ -325,14 +325,17 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
       )}
 
       {/* Card Display Area */}
-      <motion.div 
-        className="flex-1 flex items-center justify-center p-4"
-        drag="x"
-        dragConstraints={{ left: 0, right: 0 }}
-        onDragEnd={handleDragEnd}
-        dragElastic={0}
-        dragMomentum={false}
-      >
+      <div className="flex-1 flex items-center justify-center p-4 relative">
+        {/* Invisible drag overlay */}
+        <motion.div
+          className="absolute inset-0 z-10"
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          onDragEnd={handleDragEnd}
+          dragElastic={0}
+          dragMomentum={false}
+          style={{ background: 'transparent' }}
+        />
         <div className="w-full max-w-2xl">
           <AnimatePresence mode="wait">
             {currentCard ? (
@@ -369,7 +372,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
             )}
           </AnimatePresence>
         </div>
-      </motion.div>
+      </div>
 
       {/* Page Indicators */}
       {cards.length > 1 && (
