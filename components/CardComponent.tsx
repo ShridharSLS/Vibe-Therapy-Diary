@@ -110,7 +110,7 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange }: Card
   };
 
   const getBackgroundClass = () => {
-    return typeValue === 'Before' ? 'bg-before-bg border-before-border' : 'bg-after-bg border-after-border';
+    return typeValue === 'Before' ? 'bg-before-bg' : 'bg-after-bg';
   };
 
   const getTypeButtonClass = (type: CardType) => {
@@ -130,7 +130,7 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange }: Card
   return (
     <motion.div
       layout
-      className={`w-full max-w-lg mx-auto rounded-2xl shadow-xl border-2 ${getBackgroundClass()} overflow-hidden`}
+      className={`w-full max-w-lg mx-auto rounded-2xl shadow-xl ${getBackgroundClass()} overflow-hidden`}
     >
       {/* Card Header */}
       <div className="p-6 pb-4">
