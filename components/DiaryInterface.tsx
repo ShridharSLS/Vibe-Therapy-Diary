@@ -247,7 +247,12 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
   const currentCard = cards[currentIndex];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100">
+    <motion.div 
+      className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100"
+      drag="x"
+      dragConstraints={{ left: 0, right: 0 }}
+      onDragEnd={handleDragEnd}
+    >
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-4xl mx-auto px-4 py-4">
@@ -325,12 +330,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
       )}
 
       {/* Card Display Area */}
-      <motion.div 
-        className="flex-1 flex items-center justify-center p-4"
-        drag="x"
-        dragConstraints={{ left: 0, right: 0 }}
-        onDragEnd={handleDragEnd}
-      >
+      <div className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-2xl">
           <AnimatePresence mode="wait">
             {currentCard ? (
@@ -367,7 +367,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
             )}
           </AnimatePresence>
         </div>
-      </motion.div>
+      </div>
 
       {/* Page Indicators */}
       {cards.length > 1 && (
@@ -385,6 +385,6 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }
