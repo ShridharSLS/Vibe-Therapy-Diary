@@ -203,12 +203,35 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
     }
   };
 
+  // Get animation direction based on swipe direction
+  const getAnimationProps = (direction: 'left' | 'right') => {
+    if (direction === 'left') {
+      // Swiping left: next card comes from right
+      return {
+        initial: { opacity: 0, x: 100 },
+        animate: { opacity: 1, x: 0 },
+        exit: { opacity: 0, x: -100 }
+      };
+    } else {
+      // Swiping right: previous card comes from left
+      return {
+        initial: { opacity: 0, x: -100 },
+        animate: { opacity: 1, x: 0 },
+        exit: { opacity: 0, x: 100 }
+      };
+    }
+  };
+
+  const [swipeDirection, setSwipeDirection] = useState<'left' | 'right'>('left');
+
   const handleDragEnd = (event: any, info: PanInfo) => {
     const threshold = 100;
     
     if (info.offset.x > threshold) {
+      setSwipeDirection('right');
       handleSwipe('right');
     } else if (info.offset.x < -threshold) {
+      setSwipeDirection('left');
       handleSwipe('left');
     }
   };
@@ -302,19 +325,19 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
       )}
 
       {/* Card Display Area */}
-      <div className="flex-1 flex items-center justify-center p-4">
+      <motion.div 
+        className="flex-1 flex items-center justify-center p-4"
+        drag="x"
+        dragConstraints={{ left: 0, right: 0 }}
+        onDragEnd={handleDragEnd}
+      >
         <div className="w-full max-w-2xl">
           <AnimatePresence mode="wait">
             {currentCard ? (
               <motion.div
                 key={currentCard.id}
-                initial={{ opacity: 0, x: 100 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -100 }}
+                {...getAnimationProps(swipeDirection)}
                 transition={{ duration: 0.3 }}
-                drag="x"
-                dragConstraints={{ left: 0, right: 0 }}
-                onDragEnd={handleDragEnd}
                 className="card-container"
               >
                 <CardComponent
@@ -344,7 +367,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
             )}
           </AnimatePresence>
         </div>
-      </div>
+      </motion.div>
 
       {/* Page Indicators */}
       {cards.length > 1 && (
