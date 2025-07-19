@@ -233,7 +233,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
               <h1 className="text-xl font-bold text-gray-900">{diary.name}'s Diary</h1>
               <p className="text-sm text-gray-600">Client ID: {diary.clientId}</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <div className="text-sm text-gray-500">
                 {cards.length > 0 ? `${currentIndex + 1} of ${cards.length}` : '0 cards'}
               </div>
