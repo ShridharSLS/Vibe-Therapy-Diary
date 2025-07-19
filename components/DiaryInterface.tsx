@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { 
   ChevronLeft, 
@@ -196,30 +196,35 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
   };
 
   const [previousIndex, setPreviousIndex] = useState(0);
-  const [lastSwipeDirection, setLastSwipeDirection] = useState<'left' | 'right'>('left');
+  const swipeDirectionRef = useRef<'left' | 'right'>('left');
+  const [animationKey, setAnimationKey] = useState(0);
 
   const handleSwipe = (direction: 'left' | 'right') => {
     const oldIndex = currentIndex;
-    setLastSwipeDirection(direction);
+    
+    // Store swipe direction immediately in ref (no re-render delay)
+    swipeDirectionRef.current = direction;
     
     if (direction === 'left' && currentIndex < cards.length - 1) {
       setPreviousIndex(oldIndex);
       setCurrentIndex(currentIndex + 1);
+      setAnimationKey(prev => prev + 1); // Force re-render with new animation
     } else if (direction === 'right' && currentIndex > 0) {
       setPreviousIndex(oldIndex);
       setCurrentIndex(currentIndex - 1);
+      setAnimationKey(prev => prev + 1); // Force re-render with new animation
     }
   };
 
-  // Get animation props: entry based on index change, exit based on swipe direction
+  // Get animation props: entry based on index change, exit based on immediate swipe direction
   const getAnimationProps = () => {
     const isGoingForward = currentIndex > previousIndex;
     
     // Entry direction based on index change
     const entryX = isGoingForward ? 100 : -100; // Forward = from right, Backward = from left
     
-    // Exit direction based on actual swipe direction
-    const exitX = lastSwipeDirection === 'left' ? -100 : 100; // Left swipe = exit left, Right swipe = exit right
+    // Exit direction based on immediate swipe direction from ref
+    const exitX = swipeDirectionRef.current === 'left' ? -100 : 100; // Left swipe = exit left, Right swipe = exit right
     
     return {
       initial: { opacity: 0, x: entryX },
