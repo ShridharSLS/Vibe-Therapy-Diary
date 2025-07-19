@@ -205,15 +205,41 @@ export const deleteCard = async (cardId: string): Promise<void> => {
 export const duplicateCard = async (cardId: string): Promise<string> => {
   try {
     const cardsRef = collection(db, 'cards');
-    const q = query(cardsRef, where('id', '==', cardId));
-    const querySnapshot = await getDocs(q);
     
-    if (querySnapshot.empty) {
+    // Get the original card
+    const cardQuery = query(cardsRef, where('id', '==', cardId));
+    const cardSnapshot = await getDocs(cardQuery);
+    
+    if (cardSnapshot.empty) {
       throw new Error('Card not found');
     }
 
-    const originalCard = querySnapshot.docs[0].data();
+    const originalCard = cardSnapshot.docs[0].data();
     const newCardId = `${originalCard.diaryId}_${Date.now()}`;
+    
+    // Get all cards for this diary to determine proper ordering
+    const allCardsQuery = query(
+      cardsRef,
+      where('diaryId', '==', originalCard.diaryId),
+      orderBy('order', 'asc')
+    );
+    const allCardsSnapshot = await getDocs(allCardsQuery);
+    const allCards = allCardsSnapshot.docs.map(doc => doc.data());
+    
+    // Find the current card's position and the next card's order
+    const currentCardOrder = originalCard.order;
+    let nextCardOrder = currentCardOrder + 1; // Default if no next card
+    
+    // Find the next card after the current one
+    for (const card of allCards) {
+      if (card.order > currentCardOrder) {
+        nextCardOrder = card.order;
+        break;
+      }
+    }
+    
+    // Set new order between current and next card
+    const newOrder = (currentCardOrder + nextCardOrder) / 2;
     
     const newCardData = {
       id: newCardId,
@@ -221,7 +247,7 @@ export const duplicateCard = async (cardId: string): Promise<string> => {
       topic: `${originalCard.topic} (Copy)`,
       type: originalCard.type,
       bodyText: originalCard.bodyText,
-      order: originalCard.order + 0.5, // Insert after original
+      order: newOrder, // Insert precisely between current and next card
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     };
