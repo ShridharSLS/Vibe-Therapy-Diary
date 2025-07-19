@@ -74,7 +74,7 @@ export default function DiaryPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-800"></div>
       </div>
     );
   }
@@ -87,7 +87,7 @@ export default function DiaryPage() {
           <p className="text-gray-600 mb-6">The diary you're looking for doesn't exist.</p>
           <button
             onClick={() => router.push('/')}
-            className="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+            className="bg-blue-800 hover:bg-blue-900 text-white font-medium py-2 px-4 rounded-lg transition-colors"
           >
             Go Home
           </button>
@@ -105,8 +105,8 @@ export default function DiaryPage() {
           className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full"
         >
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Lock size={24} className="text-purple-600" />
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Lock size={24} className="text-blue-800" />
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
               Access Therapy Diary
@@ -126,7 +126,7 @@ export default function DiaryPage() {
                 id="clientId"
                 value={clientId}
                 onChange={(e) => setClientId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 focus:border-transparent"
                 placeholder="Enter your client ID"
                 required
                 disabled={isValidating}
@@ -135,7 +135,7 @@ export default function DiaryPage() {
 
             <button
               type="submit"
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full bg-blue-800 hover:bg-blue-900 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               disabled={isValidating}
             >
               {isValidating ? (

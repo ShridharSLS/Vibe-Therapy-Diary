@@ -216,7 +216,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-800"></div>
       </div>
     );
   }
@@ -224,7 +224,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
   const currentCard = cards[currentIndex];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-4xl mx-auto px-4 py-4">
@@ -344,7 +344,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
                 <p className="text-gray-600 mb-4">Create your first therapy diary card to get started.</p>
                 <button
                   onClick={handleAddCard}
-                  className="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                  className="bg-blue-800 hover:bg-blue-900 text-white font-medium py-2 px-4 rounded-lg transition-colors"
                 >
                   Create First Card
                 </button>
@@ -363,7 +363,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
                 key={index}
                 onClick={() => setCurrentIndex(index)}
                 className={`w-2 h-2 rounded-full transition-colors ${
-                  index === currentIndex ? 'bg-purple-600' : 'bg-gray-300'
+                  index === currentIndex ? 'bg-blue-800' : 'bg-gray-300'
                 }`}
               />
             ))}

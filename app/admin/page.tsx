@@ -269,8 +269,8 @@ export default function AdminPage() {
           
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Settings size={24} className="text-purple-600" />
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Settings size={24} className="text-blue-800" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Active Sessions</p>

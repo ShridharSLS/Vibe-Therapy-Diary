@@ -148,7 +148,7 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange }: Card
                   queueSnapshot();
                 }}
                 onKeyDown={(e) => handleKeyDown(e, handleTopicSave, handleTopicCancel)}
-                className="w-full text-xl font-bold bg-transparent border-2 border-gray-300 rounded-lg p-3 resize-none focus:outline-none focus:border-purple-500"
+                className="w-full text-xl font-bold bg-transparent border-2 border-gray-300 rounded-lg p-3 resize-none focus:outline-none focus:border-blue-800"
                 rows={2}
                 placeholder="Enter topic..."
                 maxLength={100}

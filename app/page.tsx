@@ -126,7 +126,7 @@ export default function HomePage() {
             
             <a
               href={`/diary/${createdDiary.id}`}
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+              className="w-full bg-blue-800 hover:bg-blue-900 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
             >
               <ArrowRight size={18} />
               Go to Therapy Diary
@@ -167,8 +167,8 @@ export default function HomePage() {
             className="text-center"
           >
             <div className="mb-8">
-              <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Plus size={32} className="text-purple-600" />
+              <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Plus size={32} className="text-blue-800" />
               </div>
               <p className="text-gray-600 mb-6">
                 Create a new therapy diary to get started. Each diary gets a unique URL that you can share with your therapist or other collaborators.
@@ -177,7 +177,7 @@ export default function HomePage() {
             
             <button
               onClick={() => setShowForm(true)}
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+              className="w-full bg-blue-800 hover:bg-blue-900 text-white font-medium py-3 px-4 rounded-lg transition-colors"
             >
               Create New Therapy Diary
             </button>
@@ -198,7 +198,7 @@ export default function HomePage() {
                 id="clientId"
                 value={formData.clientId}
                 onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 focus:border-transparent"
                 placeholder="Enter your client ID"
                 required
                 disabled={isLoading}
@@ -214,7 +214,7 @@ export default function HomePage() {
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 focus:border-transparent"
                 placeholder="Enter your name"
                 required
                 disabled={isLoading}
@@ -229,7 +229,7 @@ export default function HomePage() {
                 id="gender"
                 value={formData.gender}
                 onChange={(e) => setFormData({ ...formData, gender: e.target.value as 'Male' | 'Female' | 'Other' })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 focus:border-transparent"
                 disabled={isLoading}
               >
                 <option value="Male">Male</option>
@@ -249,7 +249,7 @@ export default function HomePage() {
               </button>
               <button
                 type="submit"
-                className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50"
+                className="flex-1 bg-blue-800 hover:bg-blue-900 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50"
                 disabled={isLoading}
               >
                 {isLoading ? 'Creating...' : 'Create Diary'}
