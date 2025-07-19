@@ -196,9 +196,12 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
   };
 
   const [previousIndex, setPreviousIndex] = useState(0);
+  const [lastSwipeDirection, setLastSwipeDirection] = useState<'left' | 'right'>('left');
 
   const handleSwipe = (direction: 'left' | 'right') => {
     const oldIndex = currentIndex;
+    setLastSwipeDirection(direction);
+    
     if (direction === 'left' && currentIndex < cards.length - 1) {
       setPreviousIndex(oldIndex);
       setCurrentIndex(currentIndex + 1);
@@ -208,25 +211,21 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
     }
   };
 
-  // Get animation direction based on index change
+  // Get animation props: entry based on index change, exit based on swipe direction
   const getAnimationProps = () => {
     const isGoingForward = currentIndex > previousIndex;
     
-    if (isGoingForward) {
-      // Going forward: next card comes from right, current exits left
-      return {
-        initial: { opacity: 0, x: 100 },
-        animate: { opacity: 1, x: 0 },
-        exit: { opacity: 0, x: -100 }
-      };
-    } else {
-      // Going backward: previous card comes from left, current exits right
-      return {
-        initial: { opacity: 0, x: -100 },
-        animate: { opacity: 1, x: 0 },
-        exit: { opacity: 0, x: 100 }
-      };
-    }
+    // Entry direction based on index change
+    const entryX = isGoingForward ? 100 : -100; // Forward = from right, Backward = from left
+    
+    // Exit direction based on actual swipe direction
+    const exitX = lastSwipeDirection === 'left' ? -100 : 100; // Left swipe = exit left, Right swipe = exit right
+    
+    return {
+      initial: { opacity: 0, x: entryX },
+      animate: { opacity: 1, x: 0 },
+      exit: { opacity: 0, x: exitX }
+    };
   };
 
   const handleDragEnd = (event: any, info: PanInfo) => {
