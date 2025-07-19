@@ -195,25 +195,29 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
     }
   };
 
+  const [animationDirection, setAnimationDirection] = useState<'forward' | 'backward'>('forward');
+
   const handleSwipe = (direction: 'left' | 'right') => {
     if (direction === 'left' && currentIndex < cards.length - 1) {
+      setAnimationDirection('forward'); // Going to next card
       setCurrentIndex(currentIndex + 1);
     } else if (direction === 'right' && currentIndex > 0) {
+      setAnimationDirection('backward'); // Going to previous card
       setCurrentIndex(currentIndex - 1);
     }
   };
 
-  // Get animation direction based on swipe direction
-  const getAnimationProps = (direction: 'left' | 'right') => {
-    if (direction === 'left') {
-      // Swiping left: next card comes from right
+  // Get animation direction based on card sequence direction
+  const getAnimationProps = (direction: 'forward' | 'backward') => {
+    if (direction === 'forward') {
+      // Going forward: next card comes from right, current exits left
       return {
         initial: { opacity: 0, x: 100 },
         animate: { opacity: 1, x: 0 },
         exit: { opacity: 0, x: -100 }
       };
     } else {
-      // Swiping right: previous card comes from left
+      // Going backward: previous card comes from left, current exits right
       return {
         initial: { opacity: 0, x: -100 },
         animate: { opacity: 1, x: 0 },
@@ -222,16 +226,12 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
     }
   };
 
-  const [swipeDirection, setSwipeDirection] = useState<'left' | 'right'>('left');
-
   const handleDragEnd = (event: any, info: PanInfo) => {
     const threshold = 100;
     
     if (info.offset.x > threshold) {
-      setSwipeDirection('right');
       handleSwipe('right');
     } else if (info.offset.x < -threshold) {
-      setSwipeDirection('left');
       handleSwipe('left');
     }
   };
@@ -338,7 +338,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
             {currentCard ? (
               <motion.div
                 key={currentCard.id}
-                {...getAnimationProps(swipeDirection)}
+                {...getAnimationProps(animationDirection)}
                 transition={{ duration: 0.3 }}
                 className="card-container"
               >
