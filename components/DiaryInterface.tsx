@@ -32,6 +32,7 @@ interface DiaryInterfaceProps {
 export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
   const [cards, setCards] = useState<Card[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [previousIndex, setPreviousIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [controlsOpen, setControlsOpen] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true; // SSR default
@@ -197,10 +198,19 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
 
   const handleSwipe = (direction: 'left' | 'right') => {
     if (direction === 'left' && currentIndex < cards.length - 1) {
+      setPreviousIndex(currentIndex);
       setCurrentIndex(currentIndex + 1);
     } else if (direction === 'right' && currentIndex > 0) {
+      setPreviousIndex(currentIndex);
       setCurrentIndex(currentIndex - 1);
     }
+  };
+
+  // Dynamic exit direction based on index change
+  const getExitDirection = () => {
+    // If going forward (index increased), exit left
+    // If going backward (index decreased), exit right
+    return currentIndex > previousIndex ? -100 : 100;
   };
 
   const handleDragEnd = (event: any, info: PanInfo) => {
@@ -310,7 +320,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
                 key={currentCard.id}
                 initial={{ opacity: 0, x: 100 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -100 }}
+                exit={{ opacity: 0, x: getExitDirection() }}
                 transition={{ duration: 0.3 }}
                 drag="x"
                 dragConstraints={{ left: 0, right: 0 }}
