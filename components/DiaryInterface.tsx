@@ -233,16 +233,27 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
               <h1 className="text-xl font-bold text-gray-900">{diary.name}'s Diary</h1>
               <p className="text-sm text-gray-600">Client ID: {diary.clientId}</p>
             </div>
-            <div className="text-sm text-gray-500">
-              {cards.length > 0 ? `${currentIndex + 1} of ${cards.length}` : '0 cards'}
+            <div className="flex items-center gap-2">
+              <div className="text-sm text-gray-500">
+                {cards.length > 0 ? `${currentIndex + 1} of ${cards.length}` : '0 cards'}
+              </div>
+              {cards.length > 0 && (
+                <button
+                  onClick={() => setControlsOpen(!controlsOpen)}
+                  className="p-1 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
+                  title={controlsOpen ? "Hide controls" : "Show controls"}
+                >
+                  {controlsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </button>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Controls Bar */}
-      <div className="bg-white border-b shadow-sm">
-        {controlsOpen ? (
+      {/* Controls Bar - Only show when expanded */}
+      {controlsOpen && (
+        <div className="bg-white border-b shadow-sm">
           <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <button
@@ -286,28 +297,9 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
                 <Trash2 size={20} />
               </button>
             </div>
-
-            {/* Collapse toggle */}
-            <button
-              onClick={() => setControlsOpen(false)}
-              className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
-              title="Hide controls"
-            >
-              <ChevronUp size={20} />
-            </button>
           </div>
-        ) : (
-          <div className="max-w-4xl mx-auto px-4 py-1 flex justify-center">
-            <button
-              onClick={() => setControlsOpen(true)}
-              className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
-              title="Show controls"
-            >
-              <ChevronDown size={20} />
-            </button>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Card Display Area */}
       <div className="flex-1 flex items-center justify-center p-4">
