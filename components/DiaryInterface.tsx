@@ -196,41 +196,38 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
   };
 
   const [previousIndex, setPreviousIndex] = useState(0);
-  const swipeDirectionRef = useRef<'left' | 'right'>('left');
-  const [animationKey, setAnimationKey] = useState(0);
+  const [exitDirection, setExitDirection] = useState<number>(0);
 
   const handleSwipe = (direction: 'left' | 'right') => {
     const oldIndex = currentIndex;
     
-    // Store swipe direction immediately in ref (no re-render delay)
-    swipeDirectionRef.current = direction;
-    
     if (direction === 'left' && currentIndex < cards.length - 1) {
       setPreviousIndex(oldIndex);
+      setExitDirection(-100); // Exit left for left swipe
       setCurrentIndex(currentIndex + 1);
-      setAnimationKey(prev => prev + 1); // Force re-render with new animation
     } else if (direction === 'right' && currentIndex > 0) {
       setPreviousIndex(oldIndex);
+      setExitDirection(100); // Exit right for right swipe
       setCurrentIndex(currentIndex - 1);
-      setAnimationKey(prev => prev + 1); // Force re-render with new animation
     }
   };
 
-  // Get animation props: entry based on index change, exit based on immediate swipe direction
-  const getAnimationProps = () => {
-    const isGoingForward = currentIndex > previousIndex;
-    
-    // Entry direction based on index change
-    const entryX = isGoingForward ? 100 : -100; // Forward = from right, Backward = from left
-    
-    // Exit direction based on immediate swipe direction from ref
-    const exitX = swipeDirectionRef.current === 'left' ? -100 : 100; // Left swipe = exit left, Right swipe = exit right
-    
-    return {
-      initial: { opacity: 0, x: entryX },
-      animate: { opacity: 1, x: 0 },
-      exit: { opacity: 0, x: exitX }
-    };
+  // Custom animation variants
+  const cardVariants = {
+    enter: {
+      x: currentIndex > previousIndex ? 100 : -100, // Enter from right if going forward, left if going backward
+      opacity: 0
+    },
+    center: {
+      zIndex: 1,
+      x: 0,
+      opacity: 1
+    },
+    exit: {
+      zIndex: 0,
+      x: exitDirection, // Exit in the direction of the swipe
+      opacity: 0
+    }
   };
 
   const handleDragEnd = (event: any, info: PanInfo) => {
@@ -348,7 +345,10 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
             {currentCard ? (
               <motion.div
                 key={currentCard.id}
-                {...getAnimationProps()}
+                variants={cardVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
                 transition={{ duration: 0.3 }}
                 className="card-container"
               >
