@@ -32,10 +32,9 @@ a {
   text-decoration: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
+/* Force light mode on all devices and browsers */
+html {
+  color-scheme: light only;
 }
 
 /* Rich Text Editor Styles */

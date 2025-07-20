@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   title: 'Before After - Therapy Diary',
   description: 'A collaborative therapy diary web app',
   viewport: 'width=device-width, initial-scale=1, maximum-scale=1',
+  other: {
+    'color-scheme': 'light',
+  },
 };
 
 export default function RootLayout({
