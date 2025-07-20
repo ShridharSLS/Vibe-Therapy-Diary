@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Lock, Eye, Search, Download, Settings, ExternalLink, Trash2 } from 'lucide-react';
-import { getAllDiaries, deleteDiary } from '@/lib/database';
+import { Lock, Eye, Search, Download, Settings, ExternalLink, Trash2, Copy } from 'lucide-react';
+import { getAllDiaries, deleteDiary, createDiary, getCards, createCard } from '@/lib/database';
 import { verifyPassword, changePassword } from '@/lib/adminAuth';
 import { Diary } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
@@ -22,6 +22,10 @@ export default function AdminPage() {
   const [isValidating, setIsValidating] = useState(false);
   const [deletingDiaryId, setDeletingDiaryId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [showDuplicateForm, setShowDuplicateForm] = useState<string | null>(null);
+  const [duplicateFormData, setDuplicateFormData] = useState({ clientId: '', name: '', gender: 'Male' as 'Male' | 'Female' | 'Other' });
+  const [isDuplicating, setIsDuplicating] = useState(false);
+  const [duplicateSuccess, setDuplicateSuccess] = useState<{ diaryId: string; url: string } | null>(null);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -111,6 +115,60 @@ export default function AdminPage() {
     } finally {
       setDeletingDiaryId(null);
     }
+  };
+
+  const handleDuplicateDiary = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!showDuplicateForm || !duplicateFormData.clientId.trim() || !duplicateFormData.name.trim()) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    setIsDuplicating(true);
+    
+    try {
+      // Create new diary with form data
+      const newDiaryId = await createDiary(
+        duplicateFormData.clientId,
+        duplicateFormData.name,
+        duplicateFormData.gender
+      );
+      
+      // Get all cards from the original diary
+      const originalCards = await getCards(showDuplicateForm);
+      
+      // Create copies of all cards in the new diary
+      for (const card of originalCards) {
+        await createCard(
+          newDiaryId,
+          card.topic,
+          card.type,
+          card.bodyText,
+          card.order
+        );
+      }
+      
+      const newDiaryUrl = `/diary/${newDiaryId}`;
+      
+      setDuplicateSuccess({ diaryId: newDiaryId, url: newDiaryUrl });
+      toast.success(`Diary duplicated successfully with ${originalCards.length} cards!`);
+      
+      // Refresh the diaries list
+      loadDiaries();
+      
+    } catch (error) {
+      console.error('Error duplicating diary:', error);
+      toast.error('Failed to duplicate diary');
+    } finally {
+      setIsDuplicating(false);
+    }
+  };
+
+  const resetDuplicateForm = () => {
+    setShowDuplicateForm(null);
+    setDuplicateFormData({ clientId: '', name: '', gender: 'Male' });
+    setDuplicateSuccess(null);
   };
 
   const exportToCSV = () => {
@@ -367,6 +425,13 @@ export default function AdminPage() {
                             <ExternalLink size={16} />
                           </a>
                           <button
+                            onClick={() => setShowDuplicateForm(diary.id)}
+                            title="Duplicate Diary"
+                            className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-colors"
+                          >
+                            <Copy size={16} />
+                          </button>
+                          <button
                             onClick={() => setShowDeleteConfirm(diary.id)}
                             disabled={deletingDiaryId === diary.id}
                             title="Delete Diary"
@@ -504,6 +569,134 @@ export default function AdminPage() {
                 )}
               </button>
             </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Duplicate Diary Modal */}
+      {showDuplicateForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full"
+          >
+            {duplicateSuccess ? (
+              // Success State
+              <div className="text-center">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Copy size={24} className="text-green-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Diary Duplicated!</h2>
+                <p className="text-gray-600 mb-6">
+                  The diary has been successfully duplicated with all cards copied.
+                </p>
+                
+                <div className="flex gap-3">
+                  <button
+                    onClick={resetDuplicateForm}
+                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors"
+                  >
+                    Close
+                  </button>
+                  <a
+                    href={duplicateSuccess.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-center"
+                  >
+                    Go to Diary
+                  </a>
+                </div>
+              </div>
+            ) : (
+              // Form State
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                    <Copy size={24} className="text-green-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">Duplicate Diary</h2>
+                    <p className="text-gray-600">Create a new diary with copied cards</p>
+                  </div>
+                </div>
+                
+                <form onSubmit={handleDuplicateDiary} className="space-y-4">
+                  <div>
+                    <label htmlFor="duplicateClientId" className="block text-sm font-medium text-gray-700 mb-2">
+                      Client ID
+                    </label>
+                    <input
+                      type="text"
+                      id="duplicateClientId"
+                      value={duplicateFormData.clientId}
+                      onChange={(e) => setDuplicateFormData(prev => ({ ...prev, clientId: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      required
+                      disabled={isDuplicating}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="duplicateName" className="block text-sm font-medium text-gray-700 mb-2">
+                      Name
+                    </label>
+                    <input
+                      type="text"
+                      id="duplicateName"
+                      value={duplicateFormData.name}
+                      onChange={(e) => setDuplicateFormData(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      required
+                      disabled={isDuplicating}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="duplicateGender" className="block text-sm font-medium text-gray-700 mb-2">
+                      Gender
+                    </label>
+                    <select
+                      id="duplicateGender"
+                      value={duplicateFormData.gender}
+                      onChange={(e) => setDuplicateFormData(prev => ({ ...prev, gender: e.target.value as 'Male' | 'Female' | 'Other' }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      disabled={isDuplicating}
+                    >
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={resetDuplicateForm}
+                      className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors"
+                      disabled={isDuplicating}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isDuplicating}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {isDuplicating ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          Duplicating...
+                        </>
+                      ) : (
+                        'Create Duplicate'
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
           </motion.div>
         </div>
       )}
