@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Copy, ArrowRight } from 'lucide-react';
+import { BookOpen, Copy, ArrowRight } from 'lucide-react';
 import { createDiary } from '@/lib/database';
 import { isValidClientId, isValidName, copyToClipboard } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -168,11 +168,8 @@ export default function HomePage() {
           >
             <div className="mb-8">
               <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Plus size={32} className="text-blue-800" />
+                <BookOpen size={32} className="text-blue-800" />
               </div>
-              <p className="text-gray-600 mb-6">
-                Create a new therapy diary to get started. Each diary gets a unique URL that you can share with your therapist or other collaborators.
-              </p>
             </div>
             
             <button
