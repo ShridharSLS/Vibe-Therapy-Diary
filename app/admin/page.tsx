@@ -361,22 +361,22 @@ export default function AdminPage() {
                             href={diary.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-900 transition-colors"
+                            title="View Diary"
+                            className="p-2 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded-lg transition-colors"
                           >
                             <ExternalLink size={16} />
-                            View Diary
                           </a>
                           <button
                             onClick={() => setShowDeleteConfirm(diary.id)}
                             disabled={deletingDiaryId === diary.id}
-                            className="inline-flex items-center gap-1 text-red-600 hover:text-red-800 transition-colors disabled:opacity-50"
+                            title="Delete Diary"
+                            className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                           >
                             {deletingDiaryId === diary.id ? (
                               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
                             ) : (
                               <Trash2 size={16} />
                             )}
-                            Delete
                           </button>
                         </div>
                       </td>
