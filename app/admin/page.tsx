@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Lock, Eye, Search, Download, Settings, ExternalLink, Trash2, Copy } from 'lucide-react';
-import { getAllDiaries, deleteDiary, createDiary, getCards, createCard } from '@/lib/database';
+import { Lock, Eye, Search, Download, Settings, ExternalLink, Trash2, Copy, Edit } from 'lucide-react';
+import { getAllDiaries, deleteDiary, createDiary, getCards, createCard, updateDiary } from '@/lib/database';
 import { verifyPassword, changePassword } from '@/lib/adminAuth';
 import { Diary } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
@@ -26,6 +26,9 @@ export default function AdminPage() {
   const [duplicateFormData, setDuplicateFormData] = useState({ clientId: '', name: '', gender: 'Male' as 'Male' | 'Female' | 'Other' });
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [duplicateSuccess, setDuplicateSuccess] = useState<{ diaryId: string; url: string } | null>(null);
+  const [showEditForm, setShowEditForm] = useState<string | null>(null);
+  const [editFormData, setEditFormData] = useState({ clientId: '', name: '', gender: 'Male' as 'Male' | 'Female' | 'Other' });
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -169,6 +172,53 @@ export default function AdminPage() {
     setShowDuplicateForm(null);
     setDuplicateFormData({ clientId: '', name: '', gender: 'Male' });
     setDuplicateSuccess(null);
+  };
+
+  const handleEditDiary = (diary: Diary) => {
+    setEditFormData({
+      clientId: diary.clientId,
+      name: diary.name,
+      gender: diary.gender
+    });
+    setShowEditForm(diary.id);
+  };
+
+  const handleUpdateDiary = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!showEditForm || !editFormData.clientId.trim() || !editFormData.name.trim()) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    setIsUpdating(true);
+    
+    try {
+      await updateDiary(showEditForm, {
+        clientId: editFormData.clientId,
+        name: editFormData.name,
+        gender: editFormData.gender
+      });
+      
+      toast.success('Diary updated successfully!');
+      
+      // Refresh the diaries list
+      loadDiaries();
+      
+      // Close the modal
+      resetEditForm();
+      
+    } catch (error) {
+      console.error('Error updating diary:', error);
+      toast.error('Failed to update diary');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const resetEditForm = () => {
+    setShowEditForm(null);
+    setEditFormData({ clientId: '', name: '', gender: 'Male' });
   };
 
   const exportToCSV = () => {
@@ -430,6 +480,13 @@ export default function AdminPage() {
                             className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-colors"
                           >
                             <Copy size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleEditDiary(diary)}
+                            title="Edit Diary"
+                            className="p-2 text-orange-600 hover:text-orange-800 hover:bg-orange-50 rounded-lg transition-colors"
+                          >
+                            <Edit size={16} />
                           </button>
                           <button
                             onClick={() => setShowDeleteConfirm(diary.id)}
@@ -721,6 +778,101 @@ export default function AdminPage() {
                 </form>
               </div>
             )}
+          </motion.div>
+        </div>
+      )}
+
+      {/* Edit Diary Modal */}
+      {showEditForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                <Edit size={24} className="text-orange-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Edit Diary</h2>
+                <p className="text-gray-600">Update client information</p>
+              </div>
+            </div>
+            
+            <form onSubmit={handleUpdateDiary} className="space-y-4">
+              <div>
+                <label htmlFor="editClientId" className="block text-sm font-medium text-gray-700 mb-2">
+                  Client ID
+                </label>
+                <input
+                  type="text"
+                  id="editClientId"
+                  value={editFormData.clientId}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, clientId: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  required
+                  disabled={isUpdating}
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="editName" className="block text-sm font-medium text-gray-700 mb-2">
+                  Name
+                </label>
+                <input
+                  type="text"
+                  id="editName"
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  required
+                  disabled={isUpdating}
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="editGender" className="block text-sm font-medium text-gray-700 mb-2">
+                  Gender
+                </label>
+                <select
+                  id="editGender"
+                  value={editFormData.gender}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, gender: e.target.value as 'Male' | 'Female' | 'Other' }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  disabled={isUpdating}
+                >
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={resetEditForm}
+                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors"
+                  disabled={isUpdating}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUpdating}
+                  className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isUpdating ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Updating...
+                    </>
+                  ) : (
+                    'Save Changes'
+                  )}
+                </button>
+              </div>
+            </form>
           </motion.div>
         </div>
       )}

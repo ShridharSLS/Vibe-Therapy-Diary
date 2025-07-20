@@ -100,6 +100,45 @@ export const getAllDiaries = async (): Promise<Diary[]> => {
   }
 };
 
+export const updateDiary = async (
+  diaryId: string,
+  updates: {
+    clientId?: string;
+    name?: string;
+    gender?: 'Male' | 'Female' | 'Other';
+  }
+): Promise<void> => {
+  try {
+    const diariesRef = collection(db, 'diaries');
+    const diaryQuery = query(diariesRef, where('id', '==', diaryId));
+    const diarySnapshot = await getDocs(diaryQuery);
+    
+    if (!diarySnapshot.empty) {
+      const diaryDoc = diarySnapshot.docs[0];
+      const updateData: any = {
+        updatedAt: Timestamp.now(),
+      };
+      
+      if (updates.clientId !== undefined) {
+        updateData.clientId = updates.clientId.trim();
+      }
+      if (updates.name !== undefined) {
+        updateData.name = updates.name.trim();
+      }
+      if (updates.gender !== undefined) {
+        updateData.gender = updates.gender;
+      }
+      
+      await updateDoc(diaryDoc.ref, updateData);
+    } else {
+      throw new Error('Diary not found');
+    }
+  } catch (error) {
+    console.error('Error updating diary:', error);
+    throw new Error('Failed to update diary');
+  }
+};
+
 export const deleteDiary = async (diaryId: string): Promise<void> => {
   try {
     // First, delete all cards associated with this diary
