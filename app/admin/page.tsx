@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Lock, Eye, Search, Download, Settings, ExternalLink } from 'lucide-react';
-import { getAllDiaries } from '@/lib/database';
+import { Lock, Eye, Search, Download, Settings, ExternalLink, Trash2 } from 'lucide-react';
+import { getAllDiaries, deleteDiary } from '@/lib/database';
 import { verifyPassword, changePassword } from '@/lib/adminAuth';
 import { Diary } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
@@ -20,6 +20,8 @@ export default function AdminPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
+  const [deletingDiaryId, setDeletingDiaryId] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -92,6 +94,22 @@ export default function AdminPage() {
     } catch (err) {
       console.error(err);
       toast.error('Failed to update password');
+    }
+  };
+
+  const handleDeleteDiary = async (diaryId: string, diaryName: string) => {
+    setDeletingDiaryId(diaryId);
+    try {
+      await deleteDiary(diaryId);
+      toast.success(`Diary "${diaryName}" deleted successfully`);
+      // Remove from local state for immediate UI update
+      setDiaries(prev => prev.filter(d => d.id !== diaryId));
+      setShowDeleteConfirm(null);
+    } catch (error) {
+      console.error('Error deleting diary:', error);
+      toast.error('Failed to delete diary');
+    } finally {
+      setDeletingDiaryId(null);
     }
   };
 
@@ -338,15 +356,29 @@ export default function AdminPage() {
                         {formatDate(diary.createdAt)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <a
-                          href={diary.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-900 transition-colors"
-                        >
-                          <ExternalLink size={16} />
-                          View Diary
-                        </a>
+                        <div className="flex items-center gap-3">
+                          <a
+                            href={diary.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-900 transition-colors"
+                          >
+                            <ExternalLink size={16} />
+                            View Diary
+                          </a>
+                          <button
+                            onClick={() => setShowDeleteConfirm(diary.id)}
+                            disabled={deletingDiaryId === diary.id}
+                            className="inline-flex items-center gap-1 text-red-600 hover:text-red-800 transition-colors disabled:opacity-50"
+                          >
+                            {deletingDiaryId === diary.id ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                            ) : (
+                              <Trash2 size={16} />
+                            )}
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -414,6 +446,64 @@ export default function AdminPage() {
                 </button>
               </div>
             </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <Trash2 size={24} className="text-red-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Delete Diary</h2>
+                <p className="text-gray-600">This action cannot be undone</p>
+              </div>
+            </div>
+            
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete the diary for <strong>
+              {diaries.find(d => d.id === showDeleteConfirm)?.name}</strong>? 
+              All cards and data will be permanently removed.
+            </p>
+            
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(null)}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors"
+                disabled={deletingDiaryId !== null}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const diary = diaries.find(d => d.id === showDeleteConfirm);
+                  if (diary) {
+                    handleDeleteDiary(diary.id, diary.name);
+                  }
+                }}
+                disabled={deletingDiaryId !== null}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {deletingDiaryId ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete Diary'
+                )}
+              </button>
+            </div>
           </motion.div>
         </div>
       )}

@@ -89,21 +89,39 @@ export const getAllDiaries = async (): Promise<Diary[]> => {
     const q = query(diariesRef, orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
     
-    return querySnapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: data.id,
-        clientId: data.clientId,
-        name: data.name,
-        gender: data.gender,
-        url: data.url,
-        createdAt: data.createdAt.toDate(),
-        updatedAt: data.updatedAt.toDate(),
-      };
-    });
+    return querySnapshot.docs.map(doc => ({
+      ...doc.data(),
+      createdAt: doc.data().createdAt.toDate(),
+      updatedAt: doc.data().updatedAt.toDate(),
+    })) as Diary[];
   } catch (error) {
     console.error('Error getting all diaries:', error);
-    return [];
+    throw new Error('Failed to get diaries');
+  }
+};
+
+export const deleteDiary = async (diaryId: string): Promise<void> => {
+  try {
+    // First, delete all cards associated with this diary
+    const cardsRef = collection(db, 'cards');
+    const cardsQuery = query(cardsRef, where('diaryId', '==', diaryId));
+    const cardsSnapshot = await getDocs(cardsQuery);
+    
+    // Delete all cards in batch
+    const deletePromises = cardsSnapshot.docs.map(cardDoc => deleteDoc(cardDoc.ref));
+    await Promise.all(deletePromises);
+    
+    // Then, delete the diary itself
+    const diariesRef = collection(db, 'diaries');
+    const diaryQuery = query(diariesRef, where('id', '==', diaryId));
+    const diarySnapshot = await getDocs(diaryQuery);
+    
+    if (!diarySnapshot.empty) {
+      await deleteDoc(diarySnapshot.docs[0].ref);
+    }
+  } catch (error) {
+    console.error('Error deleting diary:', error);
+    throw new Error('Failed to delete diary');
   }
 };
 
