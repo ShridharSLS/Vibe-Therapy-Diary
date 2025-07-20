@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Lock, Eye, Search, Download, Settings, ExternalLink, Trash2, Copy, Edit } from 'lucide-react';
+import { Lock, Eye, Search, Download, Settings, ExternalLink, Trash2, Copy, Edit, Link } from 'lucide-react';
 import { getAllDiaries, deleteDiary, createDiary, getCards, createCard, updateDiary } from '@/lib/database';
 import { verifyPassword, changePassword } from '@/lib/adminAuth';
 import { Diary } from '@/lib/types';
@@ -474,6 +474,16 @@ export default function AdminPage() {
                           >
                             <ExternalLink size={16} />
                           </a>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(`${window.location.origin}${diary.url}`);
+                              toast.success('Diary URL copied to clipboard!');
+                            }}
+                            title="Copy Diary URL"
+                            className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                          >
+                            <Link size={16} />
+                          </button>
                           <button
                             onClick={() => setShowDuplicateForm(diary.id)}
                             title="Duplicate Diary"
