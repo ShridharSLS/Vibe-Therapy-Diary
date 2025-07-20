@@ -592,6 +592,30 @@ export default function AdminPage() {
                   The diary has been successfully duplicated with all cards copied.
                 </p>
                 
+                {/* URL Display and Copy */}
+                <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    New Diary URL
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={`${window.location.origin}${duplicateSuccess.url}`}
+                      readOnly
+                      className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm"
+                    />
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}${duplicateSuccess.url}`);
+                        toast.success('URL copied to clipboard!');
+                      }}
+                      className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+                
                 <div className="flex gap-3">
                   <button
                     onClick={resetDuplicateForm}
