@@ -296,6 +296,15 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
               </div>
               {cards.length > 0 && (
                 <button
+                  onClick={() => setShowNavigation(true)}
+                  className="p-1 rounded-lg bg-teal-100 hover:bg-teal-200 text-teal-700 transition-colors"
+                  title="Card Navigation"
+                >
+                  <List size={16} />
+                </button>
+              )}
+              {cards.length > 0 && (
+                <button
                   onClick={() => setControlsOpen(!controlsOpen)}
                   className="p-1 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
                   title={controlsOpen ? "Hide controls" : "Show controls"}
@@ -370,17 +379,9 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
                 <Redo size={20} />
               </button>
               <button
-                onClick={() => setShowNavigation(true)}
-                disabled={cards.length === 0}
-                className="p-2 rounded-lg bg-teal-100 hover:bg-teal-200 text-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                title="Card Navigation"
-              >
-                <List size={20} />
-              </button>
-              <button
                 onClick={() => setShowGridView(true)}
                 disabled={cards.length === 0}
-                className="p-2 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="p-2 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors hidden md:block"
                 title="Grid View"
               >
                 <Grid3X3 size={20} />
