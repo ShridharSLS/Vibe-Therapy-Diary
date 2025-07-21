@@ -156,7 +156,7 @@ export default function HomePage() {
             Welcome to Before After
           </h1>
           <p className="text-gray-600">
-            Your collaborative therapy diary
+            Your collaborative diary for deeper change
           </p>
         </div>
 
@@ -176,7 +176,7 @@ export default function HomePage() {
               onClick={() => setShowForm(true)}
               className="w-full bg-blue-800 hover:bg-blue-900 text-white font-medium py-3 px-4 rounded-lg transition-colors"
             >
-              Create New Therapy Diary
+              Create New Diary
             </button>
           </motion.div>
         ) : (
