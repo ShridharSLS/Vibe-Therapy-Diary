@@ -11,7 +11,9 @@ import {
   Copy, 
   Edit3, 
   Save, 
-  Trash2 
+  Trash2,
+  Undo,
+  Redo
 } from 'lucide-react';
 import { Diary, Card } from '@/lib/types';
 import { 
@@ -305,6 +307,22 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
                 title="Delete Card"
               >
                 <Trash2 size={20} />
+              </button>
+              <button
+                onClick={handleUndo}
+                disabled={undoStack.length === 0 && textUndoStack.length === 0}
+                className="p-2 rounded-lg bg-yellow-100 hover:bg-yellow-200 text-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Undo"
+              >
+                <Undo size={20} />
+              </button>
+              <button
+                onClick={handleRedo}
+                disabled={redoStack.length === 0 && textRedoStack.length === 0}
+                className="p-2 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Redo"
+              >
+                <Redo size={20} />
               </button>
             </div>
           </div>
