@@ -52,21 +52,31 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
   // Lock body scroll when navigation is open (especially important for mobile)
   useEffect(() => {
     if (showNavigation) {
-      // Prevent body scroll
+      // Store current scroll position
+      const scrollY = window.scrollY;
+      // Prevent body scroll but allow modal content to scroll
       document.body.style.overflow = 'hidden';
       document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
       document.body.style.width = '100%';
     } else {
-      // Restore body scroll
+      // Restore body scroll and position
+      const scrollY = document.body.style.top;
       document.body.style.overflow = '';
       document.body.style.position = '';
+      document.body.style.top = '';
       document.body.style.width = '';
+      // Restore scroll position
+      if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY || '0') * -1);
+      }
     }
 
     // Cleanup on unmount
     return () => {
       document.body.style.overflow = '';
       document.body.style.position = '';
+      document.body.style.top = '';
       document.body.style.width = '';
     };
   }, [showNavigation]);
@@ -795,7 +805,6 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
               exit={{ y: '100%' }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
               className="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl z-50 max-h-[80vh] md:hidden"
-              style={{ touchAction: 'none' }}
             >
               <div className="flex flex-col h-full">
                 {/* Handle */}
@@ -815,7 +824,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
                 </div>
                 
                 {/* Card List */}
-                <div className="flex-1 overflow-y-auto px-2" style={{ overscrollBehavior: 'contain', touchAction: 'pan-y' }}>
+                <div className="flex-1 overflow-y-auto px-2" style={{ overscrollBehavior: 'contain' }}>
                   {cards.map((card, index) => (
                     <button
                       key={card.id}
