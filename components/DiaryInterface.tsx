@@ -420,7 +420,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
                   Delete Card?
                 </h3>
                 <p className="text-gray-600 mb-6">
-                  Are you sure you want to delete this card? This action cannot be undone.
+                  Are you sure you want to delete this card?
                 </p>
                 <div className="flex gap-3">
                   <button
