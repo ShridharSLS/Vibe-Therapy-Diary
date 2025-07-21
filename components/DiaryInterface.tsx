@@ -48,6 +48,28 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
   const [draggedCard, setDraggedCard] = useState<string | null>(null);
   const [insertionIndex, setInsertionIndex] = useState<number | null>(null);
   const [showNavigation, setShowNavigation] = useState(false);
+
+  // Lock body scroll when navigation is open (especially important for mobile)
+  useEffect(() => {
+    if (showNavigation) {
+      // Prevent body scroll
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+    } else {
+      // Restore body scroll
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+    }
+
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+    };
+  }, [showNavigation]);
   const [undoStack, setUndoStack] = useState<Card[][]>([]);
   const [redoStack, setRedoStack] = useState<Card[][]>([]);
   // Fine-grained text-level stacks (array snapshots for simplicity)
@@ -773,6 +795,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
               exit={{ y: '100%' }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
               className="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl z-50 max-h-[80vh] md:hidden"
+              style={{ touchAction: 'none' }}
             >
               <div className="flex flex-col h-full">
                 {/* Handle */}
@@ -792,7 +815,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
                 </div>
                 
                 {/* Card List */}
-                <div className="flex-1 overflow-y-auto px-2">
+                <div className="flex-1 overflow-y-auto px-2" style={{ overscrollBehavior: 'contain', touchAction: 'pan-y' }}>
                   {cards.map((card, index) => (
                     <button
                       key={card.id}
