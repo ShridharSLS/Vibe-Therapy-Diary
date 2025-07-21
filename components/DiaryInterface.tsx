@@ -45,7 +45,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showGridView, setShowGridView] = useState(false);
   const [draggedCard, setDraggedCard] = useState<string | null>(null);
-  const [dropZoneIndex, setDropZoneIndex] = useState<number | null>(null);
+  const [insertionIndex, setInsertionIndex] = useState<number | null>(null);
   const [undoStack, setUndoStack] = useState<Card[][]>([]);
   const [redoStack, setRedoStack] = useState<Card[][]>([]);
   // Fine-grained text-level stacks (array snapshots for simplicity)
@@ -468,7 +468,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
               </div>
               
               <div className="flex-1 overflow-y-auto">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-2" data-grid-container>
                   {cards.map((card, index) => (
                     <motion.div
                       key={card.id}
@@ -478,7 +478,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
                       whileDrag={{ scale: 1.05, zIndex: 1000 }}
                       onDragStart={() => {
                         setDraggedCard(card.id);
-                        setDropZoneIndex(null);
+                        setInsertionIndex(null);
                       }}
                       onDrag={(event, info) => {
                         if (!draggedCard) return;
@@ -500,41 +500,71 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
                           const targetCardId = targetCard.getAttribute('data-card-id');
                           const targetIndex = cards.findIndex(c => c.id === targetCardId);
                           if (targetIndex !== -1) {
-                            setDropZoneIndex(targetIndex);
+                            // Determine insertion position based on drag direction
+                            const targetRect = targetCard.getBoundingClientRect();
+                            const targetCenterY = targetRect.top + targetRect.height / 2;
+                            
+                            // If dragging above center, insert before; if below, insert after
+                            const insertBefore = centerY < targetCenterY;
+                            const newInsertionIndex = insertBefore ? targetIndex : targetIndex + 1;
+                            
+                            // Don't show insertion line if it would be the same position
+                            const currentIndex = cards.findIndex(c => c.id === card.id);
+                            if (newInsertionIndex !== currentIndex && newInsertionIndex !== currentIndex + 1) {
+                              setInsertionIndex(newInsertionIndex);
+                            } else {
+                              setInsertionIndex(null);
+                            }
                           }
                         } else {
-                          setDropZoneIndex(null);
+                          // Check if dragging in empty space at the end
+                          const gridContainer = document.querySelector('[data-grid-container]');
+                          if (gridContainer) {
+                            const gridRect = gridContainer.getBoundingClientRect();
+                            const isInGridArea = centerX >= gridRect.left && centerX <= gridRect.right && 
+                                               centerY >= gridRect.top && centerY <= gridRect.bottom;
+                            
+                            if (isInGridArea) {
+                              // If in grid area but not over a card, assume end position
+                              const currentIndex = cards.findIndex(c => c.id === card.id);
+                              if (cards.length !== currentIndex + 1) {
+                                setInsertionIndex(cards.length);
+                              } else {
+                                setInsertionIndex(null);
+                              }
+                            } else {
+                              setInsertionIndex(null);
+                            }
+                          } else {
+                            setInsertionIndex(null);
+                          }
                         }
                       }}
                       onDragEnd={(event, info) => {
-                        const finalDropIndex = dropZoneIndex;
+                        const finalInsertionIndex = insertionIndex;
                         setDraggedCard(null);
-                        setDropZoneIndex(null);
+                        setInsertionIndex(null);
                         
-                        if (finalDropIndex !== null && finalDropIndex !== index) {
-                          handleCardReorder(card.id, finalDropIndex);
+                        if (finalInsertionIndex !== null) {
+                          const currentIndex = cards.findIndex(c => c.id === card.id);
+                          const targetIndex = finalInsertionIndex > currentIndex ? finalInsertionIndex - 1 : finalInsertionIndex;
+                          if (targetIndex !== currentIndex) {
+                            handleCardReorder(card.id, targetIndex);
+                          }
                         }
                       }}
-                      className={`relative cursor-move transition-all duration-200 ${
+                      className={`relative cursor-move ${
                         draggedCard === card.id ? 'opacity-50' : ''
-                      } ${
-                        dropZoneIndex === index && draggedCard && draggedCard !== card.id
-                          ? 'ring-2 ring-blue-400 ring-offset-2 bg-blue-50/50 transform scale-105'
-                          : ''
                       }`}
                       data-card-id={card.id}
                     >
-                      {/* Drop Zone Indicator */}
-                      {dropZoneIndex === index && draggedCard && draggedCard !== card.id && (
-                        <div className="absolute -inset-1 bg-blue-400 rounded-xl opacity-20 animate-pulse" />
+                      {/* Insertion Line - Before Card */}
+                      {insertionIndex === index && draggedCard && (
+                        <div className="absolute -top-2 left-0 right-0 h-1 bg-blue-500 rounded-full shadow-lg z-10 animate-pulse" />
                       )}
                       
-                      <div className={`rounded-xl shadow-lg overflow-hidden h-48 relative ${
+                      <div className={`rounded-xl shadow-lg overflow-hidden h-48 ${
                         card.type === 'Before' ? 'bg-before-bg' : 'bg-after-bg'
-                      } ${
-                        dropZoneIndex === index && draggedCard && draggedCard !== card.id
-                          ? 'border-2 border-blue-400 border-dashed'
-                          : ''
                       }`}>
                         <div className="p-4 h-full flex flex-col">
                           <div className="flex items-center justify-between mb-2">
@@ -568,6 +598,11 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
                       </div>
                     </motion.div>
                   ))}
+                  
+                  {/* Insertion Line - After Last Card */}
+                  {insertionIndex === cards.length && draggedCard && (
+                    <div className="col-span-full h-1 bg-blue-500 rounded-full shadow-lg animate-pulse mt-2" />
+                  )}
                 </div>
               </div>
               
