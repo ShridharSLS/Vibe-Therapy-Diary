@@ -45,6 +45,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showGridView, setShowGridView] = useState(false);
   const [draggedCard, setDraggedCard] = useState<string | null>(null);
+  const [dropZoneIndex, setDropZoneIndex] = useState<number | null>(null);
   const [undoStack, setUndoStack] = useState<Card[][]>([]);
   const [redoStack, setRedoStack] = useState<Card[][]>([]);
   // Fine-grained text-level stacks (array snapshots for simplicity)
@@ -475,11 +476,14 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
                       dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
                       dragElastic={0.1}
                       whileDrag={{ scale: 1.05, zIndex: 1000 }}
-                      onDragStart={() => setDraggedCard(card.id)}
-                      onDragEnd={(event, info) => {
-                        setDraggedCard(null);
+                      onDragStart={() => {
+                        setDraggedCard(card.id);
+                        setDropZoneIndex(null);
+                      }}
+                      onDrag={(event, info) => {
+                        if (!draggedCard) return;
                         
-                        // Calculate drop target based on drag position
+                        // Calculate current drag position
                         const draggedElement = event.target as HTMLElement;
                         const rect = draggedElement.getBoundingClientRect();
                         const centerX = rect.left + rect.width / 2;
@@ -495,18 +499,42 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
                         if (targetCard) {
                           const targetCardId = targetCard.getAttribute('data-card-id');
                           const targetIndex = cards.findIndex(c => c.id === targetCardId);
-                          if (targetIndex !== -1 && targetIndex !== index) {
-                            handleCardReorder(card.id, targetIndex);
+                          if (targetIndex !== -1) {
+                            setDropZoneIndex(targetIndex);
                           }
+                        } else {
+                          setDropZoneIndex(null);
                         }
                       }}
-                      className={`relative cursor-move ${
+                      onDragEnd={(event, info) => {
+                        const finalDropIndex = dropZoneIndex;
+                        setDraggedCard(null);
+                        setDropZoneIndex(null);
+                        
+                        if (finalDropIndex !== null && finalDropIndex !== index) {
+                          handleCardReorder(card.id, finalDropIndex);
+                        }
+                      }}
+                      className={`relative cursor-move transition-all duration-200 ${
                         draggedCard === card.id ? 'opacity-50' : ''
+                      } ${
+                        dropZoneIndex === index && draggedCard && draggedCard !== card.id
+                          ? 'ring-2 ring-blue-400 ring-offset-2 bg-blue-50/50 transform scale-105'
+                          : ''
                       }`}
                       data-card-id={card.id}
                     >
-                      <div className={`rounded-xl shadow-lg overflow-hidden h-48 ${
+                      {/* Drop Zone Indicator */}
+                      {dropZoneIndex === index && draggedCard && draggedCard !== card.id && (
+                        <div className="absolute -inset-1 bg-blue-400 rounded-xl opacity-20 animate-pulse" />
+                      )}
+                      
+                      <div className={`rounded-xl shadow-lg overflow-hidden h-48 relative ${
                         card.type === 'Before' ? 'bg-before-bg' : 'bg-after-bg'
+                      } ${
+                        dropZoneIndex === index && draggedCard && draggedCard !== card.id
+                          ? 'border-2 border-blue-400 border-dashed'
+                          : ''
                       }`}>
                         <div className="p-4 h-full flex flex-col">
                           <div className="flex items-center justify-between mb-2">
