@@ -15,7 +15,8 @@ import {
   Undo,
   Redo,
   Grid3X3,
-  X
+  X,
+  List
 } from 'lucide-react';
 import { Diary, Card } from '@/lib/types';
 import { 
@@ -46,6 +47,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
   const [showGridView, setShowGridView] = useState(false);
   const [draggedCard, setDraggedCard] = useState<string | null>(null);
   const [insertionIndex, setInsertionIndex] = useState<number | null>(null);
+  const [showNavigation, setShowNavigation] = useState(false);
   const [undoStack, setUndoStack] = useState<Card[][]>([]);
   const [redoStack, setRedoStack] = useState<Card[][]>([]);
   // Fine-grained text-level stacks (array snapshots for simplicity)
@@ -368,6 +370,14 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
                 <Redo size={20} />
               </button>
               <button
+                onClick={() => setShowNavigation(true)}
+                disabled={cards.length === 0}
+                className="p-2 rounded-lg bg-teal-100 hover:bg-teal-200 text-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Card Navigation"
+              >
+                <List size={20} />
+              </button>
+              <button
                 onClick={() => setShowGridView(true)}
                 disabled={cards.length === 0}
                 className="p-2 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -663,6 +673,178 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Navigation Sidebar (Desktop) & Bottom Sheet (Mobile) */}
+      <AnimatePresence>
+        {showNavigation && (
+          <>
+            {/* Desktop Sidebar */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/20 z-40 hidden md:block"
+              onClick={() => setShowNavigation(false)}
+            />
+            <motion.div
+              initial={{ x: -300 }}
+              animate={{ x: 0 }}
+              exit={{ x: -300 }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed left-0 top-0 bottom-0 w-80 bg-white shadow-2xl z-50 hidden md:block"
+            >
+              <div className="flex flex-col h-full">
+                {/* Header */}
+                <div className="flex items-center justify-between p-4 border-b bg-gray-50">
+                  <h3 className="text-lg font-semibold text-gray-800">Card Navigation</h3>
+                  <button
+                    onClick={() => setShowNavigation(false)}
+                    className="p-1 hover:bg-gray-200 rounded-lg transition-colors"
+                  >
+                    <X size={20} className="text-gray-600" />
+                  </button>
+                </div>
+                
+                {/* Card List */}
+                <div className="flex-1 overflow-y-auto">
+                  {cards.map((card, index) => (
+                    <button
+                      key={card.id}
+                      onClick={() => {
+                        setCurrentIndex(index);
+                        setShowNavigation(false);
+                      }}
+                      className={`w-full p-4 text-left border-b hover:bg-gray-50 transition-colors ${
+                        index === currentIndex ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        {/* Card Number */}
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm font-medium text-gray-600">
+                          {index + 1}
+                        </div>
+                        
+                        {/* Card Type Badge */}
+                        <div className={`flex-shrink-0 px-2 py-1 rounded-full text-xs font-medium ${
+                          card.type === 'Before' 
+                            ? 'bg-red-100 text-red-700' 
+                            : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {card.type}
+                        </div>
+                        
+                        {/* Card Topic */}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-gray-900 truncate">
+                            {card.topic || 'Untitled'}
+                          </div>
+                          {card.bodyText && (
+                            <div className="text-xs text-gray-500 truncate mt-1">
+                              {card.bodyText.replace(/<[^>]*>/g, '').substring(0, 50)}...
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                
+                {/* Footer */}
+                <div className="p-4 border-t bg-gray-50 text-center text-sm text-gray-600">
+                  {cards.length} {cards.length === 1 ? 'card' : 'cards'} total
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Mobile Bottom Sheet */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 z-40 md:hidden"
+              onClick={() => setShowNavigation(false)}
+            />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl z-50 max-h-[80vh] md:hidden"
+            >
+              <div className="flex flex-col h-full">
+                {/* Handle */}
+                <div className="flex justify-center p-2">
+                  <div className="w-12 h-1 bg-gray-300 rounded-full" />
+                </div>
+                
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 pb-2">
+                  <h3 className="text-lg font-semibold text-gray-800">Jump to Card</h3>
+                  <button
+                    onClick={() => setShowNavigation(false)}
+                    className="p-1 hover:bg-gray-200 rounded-lg transition-colors"
+                  >
+                    <X size={20} className="text-gray-600" />
+                  </button>
+                </div>
+                
+                {/* Card List */}
+                <div className="flex-1 overflow-y-auto px-2">
+                  {cards.map((card, index) => (
+                    <button
+                      key={card.id}
+                      onClick={() => {
+                        setCurrentIndex(index);
+                        setShowNavigation(false);
+                      }}
+                      className={`w-full p-4 text-left rounded-xl mb-2 transition-colors ${
+                        index === currentIndex 
+                          ? 'bg-blue-50 border-2 border-blue-200' 
+                          : 'bg-gray-50 hover:bg-gray-100'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        {/* Card Number */}
+                        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-sm font-semibold text-gray-700">
+                          {index + 1}
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          {/* Card Type Badge */}
+                          <div className={`inline-block px-2 py-1 rounded-full text-xs font-medium mb-1 ${
+                            card.type === 'Before' 
+                              ? 'bg-red-100 text-red-700' 
+                              : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {card.type}
+                          </div>
+                          
+                          {/* Card Topic */}
+                          <div className="text-sm font-medium text-gray-900 line-clamp-2">
+                            {card.topic || 'Untitled'}
+                          </div>
+                          
+                          {/* Card Preview */}
+                          {card.bodyText && (
+                            <div className="text-xs text-gray-500 line-clamp-2 mt-1">
+                              {card.bodyText.replace(/<[^>]*>/g, '').substring(0, 80)}...
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                
+                {/* Footer */}
+                <div className="p-4 border-t bg-gray-50 text-center text-sm text-gray-600">
+                  {cards.length} {cards.length === 1 ? 'card' : 'cards'} total
+                </div>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>
