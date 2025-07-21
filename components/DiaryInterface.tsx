@@ -13,7 +13,9 @@ import {
   Save, 
   Trash2,
   Undo,
-  Redo
+  Redo,
+  Grid3X3,
+  X
 } from 'lucide-react';
 import { Diary, Card } from '@/lib/types';
 import { 
@@ -41,6 +43,8 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
     return window.innerWidth >= 768; // open on desktop (md breakpoint), collapsed on mobile
   });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showGridView, setShowGridView] = useState(false);
+  const [draggedCard, setDraggedCard] = useState<string | null>(null);
   const [undoStack, setUndoStack] = useState<Card[][]>([]);
   const [redoStack, setRedoStack] = useState<Card[][]>([]);
   // Fine-grained text-level stacks (array snapshots for simplicity)
@@ -191,6 +195,38 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
     }
   };
 
+  const handleCardReorder = async (draggedCardId: string, targetIndex: number) => {
+    try {
+      saveState();
+      
+      const draggedCardIndex = cards.findIndex(card => card.id === draggedCardId);
+      if (draggedCardIndex === -1) return;
+      
+      // Create new array with reordered cards
+      const newCards = [...cards];
+      const [draggedCard] = newCards.splice(draggedCardIndex, 1);
+      newCards.splice(targetIndex, 0, draggedCard);
+      
+      // Update order values
+      const updatedCards = newCards.map((card, index) => ({
+        ...card,
+        order: index + 1
+      }));
+      
+      // Update all cards in database
+      await Promise.all(
+        updatedCards.map(card => 
+          updateCard(card.id, { order: card.order })
+        )
+      );
+      
+      toast.success('Cards reordered successfully');
+    } catch (error) {
+      console.error('Error reordering cards:', error);
+      toast.error('Failed to reorder cards');
+    }
+  };
+
   const handleCardUpdate = async (cardId: string, updates: Partial<Card>) => {
     try {
       // Sanitize HTML content if bodyText is being updated
@@ -330,6 +366,14 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
               >
                 <Redo size={20} />
               </button>
+              <button
+                onClick={() => setShowGridView(true)}
+                disabled={cards.length === 0}
+                className="p-2 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Grid View"
+              >
+                <Grid3X3 size={20} />
+              </button>
             </div>
           </div>
         </div>
@@ -396,6 +440,121 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
           </div>
         </div>
       )}
+
+      {/* Grid View Modal */}
+      <AnimatePresence>
+        {showGridView && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white rounded-2xl shadow-xl p-6 max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-gray-900">Organize Cards</h2>
+                <button
+                  onClick={() => setShowGridView(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X size={20} className="text-gray-500" />
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-2">
+                  {cards.map((card, index) => (
+                    <motion.div
+                      key={card.id}
+                      drag
+                      dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+                      dragElastic={0.1}
+                      whileDrag={{ scale: 1.05, zIndex: 1000 }}
+                      onDragStart={() => setDraggedCard(card.id)}
+                      onDragEnd={(event, info) => {
+                        setDraggedCard(null);
+                        
+                        // Calculate drop target based on drag position
+                        const draggedElement = event.target as HTMLElement;
+                        const rect = draggedElement.getBoundingClientRect();
+                        const centerX = rect.left + rect.width / 2;
+                        const centerY = rect.top + rect.height / 2;
+                        
+                        // Find the card element under the drag point
+                        const elements = document.elementsFromPoint(centerX, centerY);
+                        const targetCard = elements.find(el => 
+                          el.hasAttribute('data-card-id') && 
+                          el.getAttribute('data-card-id') !== card.id
+                        );
+                        
+                        if (targetCard) {
+                          const targetCardId = targetCard.getAttribute('data-card-id');
+                          const targetIndex = cards.findIndex(c => c.id === targetCardId);
+                          if (targetIndex !== -1 && targetIndex !== index) {
+                            handleCardReorder(card.id, targetIndex);
+                          }
+                        }
+                      }}
+                      className={`relative cursor-move ${
+                        draggedCard === card.id ? 'opacity-50' : ''
+                      }`}
+                      data-card-id={card.id}
+                    >
+                      <div className={`rounded-xl shadow-lg overflow-hidden h-48 ${
+                        card.type === 'Before' ? 'bg-before-bg' : 'bg-after-bg'
+                      }`}>
+                        <div className="p-4 h-full flex flex-col">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              card.type === 'Before' 
+                                ? 'bg-red-200 text-red-800' 
+                                : 'bg-blue-200 text-blue-800'
+                            }`}>
+                              {card.type}
+                            </span>
+                            <span className="text-xs text-gray-500 font-medium">
+                              #{index + 1}
+                            </span>
+                          </div>
+                          
+                          <div className="flex-1 overflow-hidden">
+                            <h3 className="font-medium text-gray-900 text-sm mb-2 line-clamp-2">
+                              {card.topic || 'Untitled'}
+                            </h3>
+                            <div className="text-xs text-gray-600 line-clamp-4">
+                              {card.bodyText ? (
+                                <div dangerouslySetInnerHTML={{ 
+                                  __html: card.bodyText.replace(/<[^>]*>/g, '').substring(0, 100) + '...' 
+                                }} />
+                              ) : (
+                                <span className="italic">No content</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="flex justify-end mt-6 pt-4 border-t">
+                <button
+                  onClick={() => setShowGridView(false)}
+                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+                >
+                  Done
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Delete Confirmation Modal */}
       <AnimatePresence>
