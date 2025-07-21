@@ -40,6 +40,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
     if (typeof window === 'undefined') return true; // SSR default
     return window.innerWidth >= 768; // open on desktop (md breakpoint), collapsed on mobile
   });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [undoStack, setUndoStack] = useState<Card[][]>([]);
   const [redoStack, setRedoStack] = useState<Card[][]>([]);
   // Fine-grained text-level stacks (array snapshots for simplicity)
@@ -165,9 +166,12 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
     }
   };
 
-  const handleDeleteCard = async () => {
+  const handleDeleteCard = () => {
     if (cards.length === 0) return;
-    
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteCard = async () => {
     try {
       saveState();
       const currentCard = cards[currentIndex];
@@ -178,10 +182,12 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
         setCurrentIndex(currentIndex - 1);
       }
       
+      setShowDeleteConfirm(false);
       toast.success('Card deleted successfully');
     } catch (error) {
       console.error('Error deleting card:', error);
       toast.error('Failed to delete card');
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -390,6 +396,51 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full"
+            >
+              <div className="text-center">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Trash2 size={24} className="text-red-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Delete Card?
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  Are you sure you want to delete this card? This action cannot be undone.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmDeleteCard}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
