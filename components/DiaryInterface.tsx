@@ -474,8 +474,8 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
                       key={card.id}
                       drag
                       dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-                      dragElastic={0.1}
-                      whileDrag={{ scale: 1.05, zIndex: 1000 }}
+                      dragElastic={0.05}
+                      whileDrag={{ scale: 1.02, zIndex: 1000 }}
                       onDragStart={() => {
                         setDraggedCard(card.id);
                         setInsertionIndex(null);
@@ -500,12 +500,12 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
                           const targetCardId = targetCard.getAttribute('data-card-id');
                           const targetIndex = cards.findIndex(c => c.id === targetCardId);
                           if (targetIndex !== -1) {
-                            // Determine insertion position based on drag direction
+                            // Determine insertion position based on drag direction horizontally
                             const targetRect = targetCard.getBoundingClientRect();
-                            const targetCenterY = targetRect.top + targetRect.height / 2;
+                            const targetCenterX = targetRect.left + targetRect.width / 2;
                             
-                            // If dragging above center, insert before; if below, insert after
-                            const insertBefore = centerY < targetCenterY;
+                            // If dragging left of center, insert before; if right, insert after
+                            const insertBefore = centerX < targetCenterX;
                             const newInsertionIndex = insertBefore ? targetIndex : targetIndex + 1;
                             
                             // Don't show insertion line if it would be the same position
@@ -558,9 +558,9 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
                       }`}
                       data-card-id={card.id}
                     >
-                      {/* Insertion Line - Before Card */}
+                      {/* Vertical Insertion Line - Before Card */}
                       {insertionIndex === index && draggedCard && (
-                        <div className="absolute -top-2 left-0 right-0 h-1 bg-blue-500 rounded-full shadow-lg z-10 animate-pulse" />
+                        <div className="absolute -left-2 top-0 bottom-0 w-1 bg-blue-500 rounded-full shadow-lg z-10" />
                       )}
                       
                       <div className={`rounded-xl shadow-lg overflow-hidden h-48 ${
@@ -599,9 +599,11 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
                     </motion.div>
                   ))}
                   
-                  {/* Insertion Line - After Last Card */}
+                  {/* Vertical Insertion Line - After Last Card */}
                   {insertionIndex === cards.length && draggedCard && (
-                    <div className="col-span-full h-1 bg-blue-500 rounded-full shadow-lg animate-pulse mt-2" />
+                    <div className="relative">
+                      <div className="absolute -right-2 top-0 w-1 h-48 bg-blue-500 rounded-full shadow-lg z-10" />
+                    </div>
                   )}
                 </div>
               </div>
