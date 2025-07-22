@@ -16,7 +16,8 @@ import {
   Redo,
   Grid3X3,
   X,
-  List
+  List,
+  ExternalLink
 } from 'lucide-react';
 import { Diary, Card } from '@/lib/types';
 import { 
@@ -277,6 +278,28 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
     return currentIndex > previousIndex ? -100 : 100;
   };
 
+  // Generate prefilled Google Form URL
+  const generateGoogleFormUrl = () => {
+    const baseUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSfNBGTi1oPY-Uku3-uh3sFeM_lqPLnanHKK9e0rJ_jNRAqYgw/viewform';
+    const currentUrl = window.location.href;
+    
+    const params = new URLSearchParams({
+      'usp': 'pp_url',
+      'entry.2125991038': diary.clientId,     // Replace 'a'
+      'entry.52858992': diary.name,           // Replace 'b' 
+      'entry.314293686': diary.gender,        // Replace 'Male'
+      'entry.1464498011': currentUrl          // Replace 'c'
+    });
+    
+    return `${baseUrl}?${params.toString()}`;
+  };
+
+  // Handle Google Form registration
+  const handleGoogleFormRegistration = () => {
+    const formUrl = generateGoogleFormUrl();
+    window.open(formUrl, '_blank');
+  };
+
   const handleDragEnd = (event: any, info: PanInfo) => {
     const threshold = 100;
     
@@ -352,6 +375,13 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
                 className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <ChevronRight size={20} />
+              </button>
+              <button
+                onClick={handleGoogleFormRegistration}
+                className="p-2 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 transition-colors"
+                title="Register on Google Form"
+              >
+                <ExternalLink size={20} />
               </button>
             </div>
 
