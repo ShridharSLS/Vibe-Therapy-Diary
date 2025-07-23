@@ -12,7 +12,6 @@ export interface Card {
   id: string;
   diaryId: string;
   topic: string;
-  type: 'Before' | 'After';
   bodyText: string;
   order: number;
   createdAt: Date;
@@ -24,5 +23,4 @@ export interface AdminSession {
   passwordHash?: string;
 }
 
-export type CardType = 'Before' | 'After';
 export type Gender = 'Male' | 'Female' | 'Other';

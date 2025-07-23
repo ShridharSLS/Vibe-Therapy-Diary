@@ -146,7 +146,6 @@ export default function AdminPage() {
         await createCard(
           newDiaryId,
           card.topic,
-          card.type,
           card.bodyText,
           card.order
         );

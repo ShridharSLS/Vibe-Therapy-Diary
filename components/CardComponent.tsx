@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Edit3, Check, X, Bold, Italic, List } from 'lucide-react';
-import { Card, CardType } from '@/lib/types';
+import { Card } from '@/lib/types';
 import { getTextLength } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import dynamic from 'next/dynamic';
@@ -25,8 +25,6 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange }: Card
   const [isEditingBody, setIsEditingBody] = useState(false);
   const [topicValue, setTopicValue] = useState(card.topic);
   const [bodyValue, setBodyValue] = useState(card.bodyText);
-  const [typeValue, setTypeValue] = useState<CardType>(card.type);
-  const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false);
   
   const topicRef = useRef<HTMLTextAreaElement>(null);
   // Use forwardRef with ReactQuill
@@ -50,8 +48,7 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange }: Card
     if (!isEditingBody) {
       setBodyValue(card.bodyText);
     }
-    setTypeValue(card.type);
-  }, [card, isEditingTopic, isEditingBody]);
+  }, [card.topic, card.bodyText, isEditingTopic, isEditingBody]);
 
   const handleTopicEdit = () => {
     setIsEditingTopic(true);
@@ -93,12 +90,6 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange }: Card
     setIsEditingBody(false);
   };
 
-  const handleTypeChange = (newType: CardType) => {
-    setIsTypeMenuOpen(false);
-    setTypeValue(newType);
-    onUpdate(card.id, { type: newType });
-  };
-
   const handleKeyDown = (e: React.KeyboardEvent, saveHandler: () => void, cancelHandler: () => void) => {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
@@ -109,20 +100,7 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange }: Card
     }
   };
 
-  const getBackgroundClass = () => {
-    return typeValue === 'Before' ? 'bg-before-bg' : 'bg-after-bg';
-  };
 
-  const getTypeButtonClass = (type: CardType) => {
-    const isSelected = typeValue === type;
-    const baseClass = 'px-3 py-1 rounded-full text-sm font-medium transition-colors';
-    
-    if (type === 'Before') {
-      return `${baseClass} ${isSelected ? 'bg-red-200 text-red-800' : 'bg-gray-100 text-gray-600 hover:bg-red-100'}`;
-    } else {
-      return `${baseClass} ${isSelected ? 'bg-blue-200 text-blue-800' : 'bg-gray-100 text-gray-600 hover:bg-blue-100'}`;
-    }
-  };
 
   const currentBodyLength = getTextLength(bodyValue);
   const isOverLimit = currentBodyLength > CHARACTER_LIMIT;
@@ -130,7 +108,7 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange }: Card
   return (
     <motion.div
       layout
-      className={`w-full max-w-lg mx-auto rounded-2xl shadow-xl ${getBackgroundClass()} overflow-hidden`}
+      className="w-full max-w-lg mx-auto rounded-2xl shadow-xl bg-after-bg overflow-hidden"
     >
       {/* Card Header */}
       <div className="p-6 pb-4">
@@ -180,32 +158,7 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange }: Card
           )}
         </div>
 
-        {/* Type Indicator / Menu */}
-        <div className="mb-4">
-          {isTypeMenuOpen ? (
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleTypeChange('Before')}
-                className={getTypeButtonClass('Before')}
-              >
-                Before
-              </button>
-              <button
-                onClick={() => handleTypeChange('After')}
-                className={getTypeButtonClass('After')}
-              >
-                After
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setIsTypeMenuOpen(true)}
-              className={`${getTypeButtonClass(typeValue)} shadow`}
-            >
-              {typeValue}
-            </button>
-          )}
-        </div>
+
       </div>
 
       {/* Card Body */}

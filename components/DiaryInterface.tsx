@@ -164,7 +164,6 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
       await createCard(
         diary.id,
         'New Topic',
-        'Before',
         '',
         newOrder
       );
@@ -625,18 +624,10 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
                         <div className="absolute -left-2 top-0 bottom-0 w-1 bg-blue-500 rounded-full shadow-lg z-10" />
                       )}
                       
-                      <div className={`rounded-xl shadow-lg overflow-hidden h-48 ${
-                        card.type === 'Before' ? 'bg-before-bg' : 'bg-after-bg'
-                      }`}>
+                      <div className="rounded-xl shadow-lg overflow-hidden h-48 bg-after-bg">
                         <div className="p-4 h-full flex flex-col">
                           <div className="flex items-center justify-between mb-2">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              card.type === 'Before' 
-                                ? 'bg-red-200 text-red-800' 
-                                : 'bg-blue-200 text-blue-800'
-                            }`}>
-                              {card.type}
-                            </span>
+
                             <span className="text-xs text-gray-500 font-medium">
                               #{index + 1}
                             </span>
@@ -778,14 +769,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
                           {index + 1}
                         </div>
                         
-                        {/* Card Type Badge */}
-                        <div className={`flex-shrink-0 px-2 py-1 rounded-full text-xs font-medium ${
-                          card.type === 'Before' 
-                            ? 'bg-red-100 text-red-700' 
-                            : 'bg-blue-100 text-blue-700'
-                        }`}>
-                          {card.type}
-                        </div>
+
                         
                         {/* Card Topic */}
                         <div className="flex-1 min-w-0">
@@ -865,14 +849,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
                         </div>
                         
                         <div className="flex-1 min-w-0">
-                          {/* Card Type Badge */}
-                          <div className={`inline-block px-2 py-1 rounded-full text-xs font-medium mb-1 ${
-                            card.type === 'Before' 
-                              ? 'bg-red-100 text-red-700' 
-                              : 'bg-blue-100 text-blue-700'
-                          }`}>
-                            {card.type}
-                          </div>
+
                           
                           {/* Card Topic */}
                           <div className="text-sm font-medium text-gray-900 line-clamp-2">

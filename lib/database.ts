@@ -168,7 +168,6 @@ export const deleteDiary = async (diaryId: string): Promise<void> => {
 export const createCard = async (
   diaryId: string,
   topic: string,
-  type: 'Before' | 'After',
   bodyText: string = '',
   order: number
 ): Promise<string> => {
@@ -177,7 +176,6 @@ export const createCard = async (
       id: `${diaryId}_${Date.now()}`,
       diaryId,
       topic: topic.trim(),
-      type,
       bodyText: bodyText.trim(),
       order,
       createdAt: Timestamp.now(),
@@ -223,7 +221,7 @@ export const getCards = async (diaryId: string): Promise<Card[]> => {
 
 export const updateCard = async (
   cardId: string,
-  updates: Partial<Pick<Card, 'topic' | 'type' | 'bodyText' | 'order'>>
+  updates: Partial<Pick<Card, 'topic' | 'bodyText' | 'order'>>
 ): Promise<void> => {
   try {
     const cardsRef = collection(db, 'cards');
