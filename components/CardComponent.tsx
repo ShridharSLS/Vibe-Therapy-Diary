@@ -18,7 +18,7 @@ interface CardComponentProps {
   onLiveTextChange?: (cardId: string, updates: Partial<Card>) => void;
 }
 
-const CHARACTER_LIMIT = 300;
+const CHARACTER_LIMIT = 1000;
 
 export default function CardComponent({ card, onUpdate, onLiveTextChange }: CardComponentProps) {
   const [isEditingTopic, setIsEditingTopic] = useState(false);
