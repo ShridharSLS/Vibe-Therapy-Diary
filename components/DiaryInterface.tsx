@@ -481,10 +481,10 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
                 />
                 
                 {/* Card Reading Gamification */}
-                <div className="mt-4 flex items-center justify-center gap-4 p-4 bg-gray-50 rounded-lg">
+                <div className="mt-4 flex items-center justify-center gap-4">
                   <button
                     onClick={handleCardDone}
-                    className="px-6 py-2 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg transition-colors duration-200 flex items-center gap-2"
+                    className="px-6 py-2 bg-after-bg hover:bg-blue-100 text-black font-medium rounded-lg transition-colors duration-200 flex items-center gap-2 shadow-md hover:shadow-lg"
                   >
                     <span>✓</span>
                     Done
