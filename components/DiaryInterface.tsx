@@ -35,7 +35,8 @@ interface DiaryInterfaceProps {
   diary: Diary;
 }
 
-export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
+export default function DiaryInterface({ diary: initialDiary }: DiaryInterfaceProps) {
+  const [diary, setDiary] = useState<Diary>(initialDiary);
   const [cards, setCards] = useState<Card[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [previousIndex, setPreviousIndex] = useState(0);
@@ -218,6 +219,11 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
   const handleCardDone = async () => {
     try {
       await incrementCardReadingCount(diary.id);
+      // Update local diary state immediately
+      setDiary((prev: Diary) => ({
+        ...prev,
+        cardReadingCount: (prev.cardReadingCount || 0) + 1
+      }));
       toast.success('Card marked as done! Reading count increased.');
     } catch (error) {
       console.error('Error marking card as done:', error);
@@ -484,7 +490,7 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
                     Done
                   </button>
                   <span className="text-sm font-medium text-gray-700">
-                    Card Reading Count: {diary.cardReadingCount || 0}
+                    Total Reads: {diary.cardReadingCount || 0}
                   </span>
                 </div>
               </motion.div>
