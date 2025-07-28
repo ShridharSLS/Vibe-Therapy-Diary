@@ -24,7 +24,8 @@ import {
   createCard, 
   updateCard, 
   deleteCard, 
-  duplicateCard 
+  duplicateCard,
+  incrementCardReadingCount 
 } from '@/lib/database';
 import CardComponent from './CardComponent';
 import { sanitizeHtml } from '@/lib/sanitize';
@@ -211,6 +212,16 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
       console.error('Error deleting card:', error);
       toast.error('Failed to delete card');
       setShowDeleteConfirm(false);
+    }
+  };
+
+  const handleCardDone = async () => {
+    try {
+      await incrementCardReadingCount(diary.id);
+      toast.success('Card marked as done! Reading count increased.');
+    } catch (error) {
+      console.error('Error marking card as done:', error);
+      toast.error('Failed to mark card as done');
     }
   };
 
@@ -462,6 +473,20 @@ export default function DiaryInterface({ diary }: DiaryInterfaceProps) {
                   onUpdate={handleCardUpdate}
                   onLiveTextChange={handleLiveTextChange}
                 />
+                
+                {/* Card Reading Gamification */}
+                <div className="mt-4 flex items-center justify-center gap-4 p-4 bg-gray-50 rounded-lg">
+                  <button
+                    onClick={handleCardDone}
+                    className="px-6 py-2 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg transition-colors duration-200 flex items-center gap-2"
+                  >
+                    <span>✓</span>
+                    Done
+                  </button>
+                  <span className="text-sm font-medium text-gray-700">
+                    Card Reading Count: {diary.cardReadingCount || 0}
+                  </span>
+                </div>
               </motion.div>
             ) : (
               <motion.div

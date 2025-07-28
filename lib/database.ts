@@ -30,6 +30,7 @@ export const createDiary = async (
       name: name.trim(),
       gender,
       url: `/diary/${diaryId}`,
+      cardReadingCount: 0,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     };
@@ -61,6 +62,7 @@ export const getDiary = async (diaryId: string): Promise<Diary | null> => {
       name: data.name,
       gender: data.gender,
       url: data.url,
+      cardReadingCount: data.cardReadingCount || 0,
       createdAt: data.createdAt.toDate(),
       updatedAt: data.updatedAt.toDate(),
     };
@@ -91,6 +93,7 @@ export const getAllDiaries = async (): Promise<Diary[]> => {
     
     return querySnapshot.docs.map(doc => ({
       ...doc.data(),
+      cardReadingCount: doc.data().cardReadingCount || 0,
       createdAt: doc.data().createdAt.toDate(),
       updatedAt: doc.data().updatedAt.toDate(),
     })) as Diary[];
@@ -161,6 +164,28 @@ export const deleteDiary = async (diaryId: string): Promise<void> => {
   } catch (error) {
     console.error('Error deleting diary:', error);
     throw new Error('Failed to delete diary');
+  }
+};
+
+export const incrementCardReadingCount = async (diaryId: string): Promise<void> => {
+  try {
+    const diariesRef = collection(db, 'diaries');
+    const diaryQuery = query(diariesRef, where('id', '==', diaryId));
+    const diarySnapshot = await getDocs(diaryQuery);
+    
+    if (!diarySnapshot.empty) {
+      const diaryDoc = diarySnapshot.docs[0];
+      const currentData = diaryDoc.data();
+      const currentCount = currentData.cardReadingCount || 0;
+      
+      await updateDoc(diaryDoc.ref, {
+        cardReadingCount: currentCount + 1,
+        updatedAt: Timestamp.now(),
+      });
+    }
+  } catch (error) {
+    console.error('Error incrementing card reading count:', error);
+    throw new Error('Failed to increment card reading count');
   }
 };
 

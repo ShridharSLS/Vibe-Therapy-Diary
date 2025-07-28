@@ -4,6 +4,7 @@ export interface Diary {
   name: string;
   gender: 'Male' | 'Female' | 'Other';
   url: string;
+  cardReadingCount: number;
   createdAt: Date;
   updatedAt: Date;
 }
