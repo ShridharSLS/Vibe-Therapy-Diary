@@ -300,7 +300,6 @@ export const duplicateCard = async (cardId: string): Promise<string> => {
       id: newCardId,
       diaryId: originalCard.diaryId,
       topic: `${originalCard.topic} (Copy)`,
-      type: originalCard.type,
       bodyText: originalCard.bodyText,
       order: newOrder, // Insert precisely between current and next card
       createdAt: Timestamp.now(),
