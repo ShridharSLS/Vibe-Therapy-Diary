@@ -505,33 +505,31 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">{diary.name}'s Diary</h1>
-              <p className="text-sm text-gray-600">Client ID: {diary.clientId}</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="text-sm text-gray-500">
-                {cards.length > 0 ? `${currentIndex + 1} of ${cards.length}` : '0 cards'}
+            <div className="flex items-center gap-2">
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">{diary.name}'s Diary</h1>
+                <p className="text-sm text-gray-600">Client ID: {diary.clientId}</p>
               </div>
-              {/* Lock Toggle Button */}
+              {/* Lock Icon next to title */}
               <button
                 onClick={handleLockToggle}
                 disabled={isLockLoading}
-                className={`p-1 rounded-lg transition-colors ${
-                  diary.isLocked 
-                    ? 'bg-red-100 hover:bg-red-200 text-red-700' 
-                    : 'bg-green-100 hover:bg-green-200 text-green-700'
-                } disabled:opacity-50`}
+                className={`p-1 rounded-lg transition-colors ${diary.isLocked ? 'text-red-600' : 'text-green-600'} hover:bg-gray-100 disabled:opacity-50`}
                 title={diary.isLocked ? 'Diary is locked - click to unlock' : 'Diary is unlocked - click to lock'}
               >
                 {isLockLoading ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
                 ) : diary.isLocked ? (
-                  <Lock size={16} />
+                  <Lock size={18} />
                 ) : (
-                  <Unlock size={16} />
+                  <Unlock size={18} />
                 )}
               </button>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="text-sm text-gray-500">
+                {cards.length > 0 ? `${currentIndex + 1} of ${cards.length}` : '0 cards'}
+              </div>
               {cards.length > 0 && (
                 <button
                   onClick={() => setShowNavigation(true)}
