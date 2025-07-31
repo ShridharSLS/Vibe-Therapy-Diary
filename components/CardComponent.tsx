@@ -40,6 +40,17 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange, onEdit
     }, 400);
   };
 
+  // Immediately flush any pending updates (for when editing stops)
+  const flushPendingUpdates = () => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    if (onLiveTextChange) {
+      onLiveTextChange(card.id, { topic: topicValue, bodyText: bodyValue });
+    }
+  };
+
   useEffect(() => {
     // Only update from props if we're not actively editing
     // This prevents cursor jumping when typing
@@ -55,7 +66,19 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange, onEdit
   useEffect(() => {
     const isEditing = isEditingTopic || isEditingBody;
     onEditingStateChange?.(isEditing);
+    
+    // If we just stopped editing, flush any pending updates immediately
+    if (!isEditing) {
+      flushPendingUpdates();
+    }
   }, [isEditingTopic, isEditingBody, onEditingStateChange]);
+
+  // Cleanup: flush pending updates on unmount
+  useEffect(() => {
+    return () => {
+      flushPendingUpdates();
+    };
+  }, []);
 
   const handleTopicEdit = () => {
     setIsEditingTopic(true);
