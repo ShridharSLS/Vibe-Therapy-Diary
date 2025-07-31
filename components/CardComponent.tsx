@@ -210,11 +210,11 @@ const CardComponent = forwardRef<CardRef, CardComponentProps>((
                   setTopicValue(e.target.value);
                   queueSnapshot();
                 }}
+                onBlur={handleTopicSave}
                 onKeyDown={(e) => handleKeyDown(e, handleTopicSave)}
                 className="w-full text-xl font-bold bg-transparent border-2 border-gray-300 rounded-lg p-3 resize-none focus:outline-none focus:border-blue-800"
                 rows={2}
                 placeholder="Enter topic..."
-                maxLength={100}
               />
               <div className="ml-auto">
                 <button
@@ -255,6 +255,7 @@ const CardComponent = forwardRef<CardRef, CardComponentProps>((
                   // Store the editor instance for direct access
                   editorInstanceRef.current = editor;
                 }}
+                onBlur={handleBodySave}
                 className={`bg-white/80 ${isOverLimit ? 'quill-error' : ''}`}
                 placeholder="Enter your thoughts..."
                 modules={{
