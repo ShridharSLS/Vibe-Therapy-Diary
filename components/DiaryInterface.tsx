@@ -27,7 +27,7 @@ import {
   duplicateCard,
   incrementCardReadingCount 
 } from '@/lib/database';
-import CardComponent from './CardComponent';
+import CardComponent, { CardRef } from './CardComponent';
 import { sanitizeHtml } from '@/lib/sanitize';
 import toast from 'react-hot-toast';
 
@@ -36,6 +36,8 @@ interface DiaryInterfaceProps {
 }
 
 export default function DiaryInterface({ diary: initialDiary }: DiaryInterfaceProps) {
+  // Create a ref for the active card component
+  const activeCardRef = useRef<CardRef>(null);
   const [diary, setDiary] = useState<Diary>(initialDiary);
   const [cards, setCards] = useState<Card[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -394,6 +396,28 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
     }
   };
 
+  const handlePrev = () => {
+    // Save any pending content from current card before navigation
+    if (activeCardRef.current) {
+      activeCardRef.current.saveContent();
+    }
+    
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+    }
+  };
+
+  const handleNext = () => {
+    // Save any pending content from current card before navigation
+    if (activeCardRef.current) {
+      activeCardRef.current.saveContent();
+    }
+    
+    if (currentIndex < cards.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -447,14 +471,14 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
           <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <button
-                onClick={() => handleSwipe('right')}
+                onClick={handlePrev}
                 disabled={currentIndex === 0}
                 className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <ChevronLeft size={20} />
               </button>
               <button
-                onClick={() => handleSwipe('left')}
+                onClick={handleNext}
                 disabled={currentIndex >= cards.length - 1}
                 className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
@@ -544,6 +568,7 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
                 className="card-container"
               >
                 <CardComponent
+                  ref={activeCardRef}
                   card={currentCard}
                   onUpdate={handleCardUpdate}
                   onLiveTextChange={handleLiveTextChange}

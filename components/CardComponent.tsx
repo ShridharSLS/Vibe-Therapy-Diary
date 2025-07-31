@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { motion } from 'framer-motion';
 import { Edit3, Check, X, Bold, Italic, List } from 'lucide-react';
 import { Card } from '@/lib/types';
@@ -19,9 +19,18 @@ interface CardComponentProps {
   onEditingStateChange?: (isEditing: boolean) => void;
 }
 
+// Define the methods that will be exposed via ref
+export interface CardRef {
+  getLatestContent: () => string;
+  saveContent: () => void;
+}
+
 const CHARACTER_LIMIT = 1000;
 
-export default function CardComponent({ card, onUpdate, onLiveTextChange, onEditingStateChange }: CardComponentProps) {
+const CardComponent = forwardRef<CardRef, CardComponentProps>((
+  { card, onUpdate, onLiveTextChange, onEditingStateChange }, 
+  ref
+) => {
   const [isEditingTopic, setIsEditingTopic] = useState(false);
   const [isEditingBody, setIsEditingBody] = useState(false);
   const [topicValue, setTopicValue] = useState(card.topic);
@@ -41,6 +50,30 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange, onEdit
     }, 400);
   };
 
+  // Get the most up-to-date content directly from the editor
+  const getLatestContent = () => {
+    if (isEditingBody && editorInstanceRef.current) {
+      return editorInstanceRef.current.getHTML();
+    }
+    return bodyValue;
+  };
+
+  // Save content directly from the editor
+  const saveContent = () => {
+    if (isEditingBody) {
+      const latestContent = getLatestContent();
+      if (latestContent !== card.bodyText) {
+        onUpdate(card.id, { bodyText: latestContent });
+      }
+    }
+  };
+  
+  // Expose methods via ref
+  useImperativeHandle(ref, () => ({
+    getLatestContent,
+    saveContent
+  }));
+
   // Immediately flush any pending updates (for when editing stops)
   const flushPendingUpdates = () => {
     if (debounceRef.current) {
@@ -49,10 +82,7 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange, onEdit
     }
     if (onLiveTextChange) {
       // Get the most up-to-date content directly from the editor
-      let currentBodyText = bodyValue;
-      if (editorInstanceRef.current) {
-        currentBodyText = editorInstanceRef.current.getHTML();
-      }
+      const currentBodyText = getLatestContent();
       
       // Force immediate update to prevent losing last character
       setTimeout(() => {
@@ -293,4 +323,6 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange, onEdit
       {/* Character count only shown when editing */}
     </motion.div>
   );
-}
+});
+
+export default CardComponent;
