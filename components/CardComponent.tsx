@@ -177,14 +177,12 @@ const CardComponent = forwardRef<CardRef, CardComponentProps>((
     setIsEditingBody(false);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent, saveHandler: () => void, cancelHandler: () => void) => {
+  const handleKeyDown = (e: React.KeyboardEvent, saveHandler: () => void) => {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       saveHandler();
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      cancelHandler();
     }
+    // Escape key no longer needed as we removed cancel functionality
   };
 
 
@@ -212,24 +210,19 @@ const CardComponent = forwardRef<CardRef, CardComponentProps>((
                   setTopicValue(e.target.value);
                   queueSnapshot();
                 }}
-                onKeyDown={(e) => handleKeyDown(e, handleTopicSave, handleTopicCancel)}
+                onKeyDown={(e) => handleKeyDown(e, handleTopicSave)}
                 className="w-full text-xl font-bold bg-transparent border-2 border-gray-300 rounded-lg p-3 resize-none focus:outline-none focus:border-blue-800"
                 rows={2}
                 placeholder="Enter topic..."
                 maxLength={100}
               />
-              <div className="flex gap-2">
+              <div className="ml-auto">
                 <button
                   onClick={handleTopicSave}
-                  className="p-1 rounded bg-green-100 hover:bg-green-200 text-green-700 transition-colors"
+                  className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                  title="Save"
                 >
-                  <Check size={16} />
-                </button>
-                <button
-                  onClick={handleTopicCancel}
-                  className="p-1 rounded bg-red-100 hover:bg-red-200 text-red-700 transition-colors"
-                >
-                  <X size={16} />
+                  <Check size={16} className="text-green-600" />
                 </button>
               </div>
             </div>
@@ -274,21 +267,13 @@ const CardComponent = forwardRef<CardRef, CardComponentProps>((
               />
             </div>
             <div className="flex items-center justify-between">
-              <div className="flex gap-2">
-                <button
-                  onClick={handleBodySave}
-                  disabled={isOverLimit}
-                  className="p-1 rounded bg-green-100 hover:bg-green-200 text-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Check size={16} />
-                </button>
-                <button
-                  onClick={handleBodyCancel}
-                  className="p-1 rounded bg-red-100 hover:bg-red-200 text-red-700 transition-colors"
-                >
-                  <X size={16} />
-                </button>
-              </div>
+              <button
+                onClick={handleBodySave}
+                disabled={isOverLimit}
+                className="p-1 rounded bg-green-100 hover:bg-green-200 text-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Check size={16} />
+              </button>
               <div className={`text-sm ${isOverLimit ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
                 {currentBodyLength}/{CHARACTER_LIMIT}
               </div>
