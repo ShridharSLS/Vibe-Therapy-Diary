@@ -191,10 +191,8 @@ const CardComponent = forwardRef<CardRef, CardComponentProps>((
   const isOverLimit = currentBodyLength > CHARACTER_LIMIT;
 
   return (
-    <motion.div
-      layout
-      className="w-full max-w-lg mx-auto rounded-2xl shadow-xl bg-after-bg overflow-hidden"
-    >
+    <div className="w-full max-w-lg mx-auto rounded-2xl shadow-xl bg-after-bg overflow-hidden">
+      {/* Removed motion.div layout animation to prevent card stretch/bounce */}
       {/* Card Header */}
       <div className="p-6 pb-4">
         
@@ -255,7 +253,13 @@ const CardComponent = forwardRef<CardRef, CardComponentProps>((
                   // Store the editor instance for direct access
                   editorInstanceRef.current = editor;
                 }}
-                onBlur={handleBodySave}
+                onBlur={() => {
+                  // Need to use setTimeout to ensure ReactQuill's internal handlers run first
+                  setTimeout(() => {
+                    handleBodySave();
+                    setIsEditingBody(false); // Explicitly exit edit mode
+                  }, 100);
+                }}
                 className={`bg-white/80 ${isOverLimit ? 'quill-error' : ''}`}
                 placeholder="Enter your thoughts..."
                 modules={{
@@ -307,7 +311,7 @@ const CardComponent = forwardRef<CardRef, CardComponentProps>((
       </div>
 
       {/* Character count only shown when editing */}
-    </motion.div>
+    </div>
   );
 });
 
