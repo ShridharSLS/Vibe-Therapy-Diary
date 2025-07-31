@@ -504,7 +504,7 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: getExitDirection() }}
                 transition={{ duration: 0.3 }}
-                drag="x"
+                drag={isEditingText ? false : "x"}
                 dragConstraints={{ left: 0, right: 0 }}
                 onDragEnd={handleDragEnd}
                 className="card-container"
