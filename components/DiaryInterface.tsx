@@ -51,6 +51,7 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
   const [insertionIndex, setInsertionIndex] = useState<number | null>(null);
   const [showNavigation, setShowNavigation] = useState(false);
   const [isEditingText, setIsEditingText] = useState(false);
+  const [activeCardId, setActiveCardId] = useState<string | null>(null);
   
   // Refs for autosave functionality
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -62,6 +63,16 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
       if (window.innerWidth < 768) {
         document.body.style.overflow = 'hidden';
       }
+      
+      // Force save any pending changes when showing navigation
+      if (debounceRef.current && isEditingText) {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+        if (cards.length > 0 && currentIndex >= 0) {
+          const currentCard = cards[currentIndex];
+          updateCard(currentCard.id, { topic: currentCard.topic, bodyText: currentCard.bodyText });
+        }
+      }
     } else {
       document.body.style.overflow = '';
     }
@@ -70,7 +81,7 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showNavigation]);
+  }, [showNavigation, isEditingText, cards, currentIndex]);
   const [undoStack, setUndoStack] = useState<Card[][]>([]);
   const [redoStack, setRedoStack] = useState<Card[][]>([]);
   // Fine-grained text-level stacks (array snapshots for simplicity)
@@ -92,9 +103,14 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
 
     return () => {
       unsubscribe();
-      // Cleanup debounce timer on unmount
+      // Cleanup debounce timer on unmount and save any pending changes
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
+        // Force an immediate save of the current card if editing was in progress
+        if (isEditingText && cards.length > 0 && currentIndex >= 0) {
+          const currentCard = cards[currentIndex];
+          updateCard(currentCard.id, { topic: currentCard.topic, bodyText: currentCard.bodyText });
+        }
       }
     };
   }, [diary.id]);
@@ -129,6 +145,11 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
 
   // Live text change from CardComponent with robust autosave
   const handleLiveTextChange = (cardId: string, updates: Partial<Card>) => {
+    // Ensure we have sanitized content if it's HTML text
+    if (updates.bodyText) {
+      updates.bodyText = sanitizeHtml(updates.bodyText);
+    }
+    
     // Update cards array immediately for autosave
     const updatedCards = cards.map(c => (c.id === cardId ? { ...c, ...updates } : c));
     setCards(updatedCards);
@@ -139,18 +160,21 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
     // Autosave to database with debouncing
     const currentCard = updatedCards.find(c => c.id === cardId);
     if (currentCard) {
-      // Debounced autosave - save after 1 second of no changes
+      // Immediate save for critical updates or last edit before navigation
+      const saveChanges = async () => {
+        try {
+          await updateCard(cardId, updates);
+          console.log('Saved card:', cardId);
+        } catch (error) {
+          console.error('Save failed:', error);
+        }
+      };
+      
+      // Debounced autosave - save after 500ms of no changes (reduced from 1000ms)
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
       }
-      debounceRef.current = setTimeout(async () => {
-        try {
-          await updateCard(cardId, updates);
-          console.log('Autosaved card:', cardId);
-        } catch (error) {
-          console.error('Autosave failed:', error);
-        }
-      }, 1000);
+      debounceRef.current = setTimeout(saveChanges, 500);
     }
   };
 
@@ -307,6 +331,16 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
   };
 
   const handleSwipe = (direction: 'left' | 'right') => {
+    // Force save any pending changes before navigation
+    if (debounceRef.current && isEditingText) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+      if (cards.length > 0 && currentIndex >= 0) {
+        const currentCard = cards[currentIndex];
+        updateCard(currentCard.id, { topic: currentCard.topic, bodyText: currentCard.bodyText });
+      }
+    }
+    
     if (direction === 'left' && currentIndex < cards.length - 1) {
       setPreviousIndex(currentIndex);
       setCurrentIndex(currentIndex + 1);

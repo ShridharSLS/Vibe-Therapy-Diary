@@ -47,7 +47,10 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange, onEdit
       debounceRef.current = null;
     }
     if (onLiveTextChange) {
-      onLiveTextChange(card.id, { topic: topicValue, bodyText: bodyValue });
+      // Force immediate update to prevent losing last character
+      setTimeout(() => {
+        onLiveTextChange(card.id, { topic: topicValue, bodyText: bodyValue });
+      }, 0);
     }
   };
 
@@ -99,6 +102,8 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange, onEdit
   };
 
   const handleTopicCancel = () => {
+    // Immediately flush any pending updates before canceling
+    flushPendingUpdates();
     setTopicValue(card.topic);
     setIsEditingTopic(false);
   };
@@ -116,6 +121,8 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange, onEdit
   };
 
   const handleBodyCancel = () => {
+    // Immediately flush any pending updates before canceling
+    flushPendingUpdates();
     setBodyValue(card.bodyText);
     setIsEditingBody(false);
   };
