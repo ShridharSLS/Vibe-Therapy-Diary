@@ -29,7 +29,8 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange, onEdit
   
   const topicRef = useRef<HTMLTextAreaElement>(null);
   // Use forwardRef with ReactQuill
-  const bodyRef = useRef<any>(null);
+  // Track the ReactQuill editor instance directly
+  const editorInstanceRef = useRef<any>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const queueSnapshot = () => {
@@ -47,9 +48,15 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange, onEdit
       debounceRef.current = null;
     }
     if (onLiveTextChange) {
+      // Get the most up-to-date content directly from the editor
+      let currentBodyText = bodyValue;
+      if (editorInstanceRef.current) {
+        currentBodyText = editorInstanceRef.current.getHTML();
+      }
+      
       // Force immediate update to prevent losing last character
       setTimeout(() => {
-        onLiveTextChange(card.id, { topic: topicValue, bodyText: bodyValue });
+        onLiveTextChange(card.id, { topic: topicValue, bodyText: currentBodyText });
       }, 0);
     }
   };
@@ -90,7 +97,6 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange, onEdit
 
   const handleBodyEdit = () => {
     setIsEditingBody(true);
-    setTimeout(() => bodyRef.current?.focus(), 0);
   };
 
   const handleTopicSave = () => {
@@ -113,16 +119,30 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange, onEdit
       toast.error(`Please keep text under ${CHARACTER_LIMIT} characters`);
       return;
     }
+    
+    // Get the most up-to-date content directly from the editor
+    let contentToSave = bodyValue;
+    if (editorInstanceRef.current) {
+      contentToSave = editorInstanceRef.current.getHTML();
+    }
+    
     // Only update if content actually changed
-    if (bodyValue !== card.bodyText) {
-      onUpdate(card.id, { bodyText: bodyValue });
+    if (contentToSave !== card.bodyText) {
+      onUpdate(card.id, { bodyText: contentToSave });
     }
     setIsEditingBody(false);
   };
 
   const handleBodyCancel = () => {
-    // Immediately flush any pending updates before canceling
-    flushPendingUpdates();
+    // Get the latest editor content before canceling
+    // This ensures we're not losing the last character
+    if (editorInstanceRef.current) {
+      const editorContent = editorInstanceRef.current.getHTML();
+      // Only update if the content actually changed and is valid
+      if (editorContent && editorContent !== '<p><br></p>' && editorContent !== card.bodyText) {
+        onUpdate(card.id, { bodyText: editorContent });
+      }
+    }
     setBodyValue(card.bodyText);
     setIsEditingBody(false);
   };
@@ -206,7 +226,12 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange, onEdit
               <ReactQuill
                 theme="snow"
                 value={bodyValue}
-                onChange={(content) => { setBodyValue(content); queueSnapshot(); }}
+                onChange={(content, delta, source, editor) => {
+                  setBodyValue(content);
+                  queueSnapshot();
+                  // Store the editor instance for direct access
+                  editorInstanceRef.current = editor;
+                }}
                 className={`bg-white/80 ${isOverLimit ? 'quill-error' : ''}`}
                 placeholder="Enter your thoughts..."
                 modules={{
