@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Lock, Eye, Search, Download, Settings, ExternalLink, Trash2, Copy, Edit, Link } from 'lucide-react';
 import { getAllDiaries, deleteDiary, createDiary, getCards, createCard, updateDiary } from '@/lib/database';
 import { verifyPassword, changePassword } from '@/lib/adminAuth';
+import { getUniversalPassword, setUniversalPassword, validatePassword } from '@/lib/diaryLock';
 import { Diary } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -29,12 +30,30 @@ export default function AdminPage() {
   const [showEditForm, setShowEditForm] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState({ clientId: '', name: '', gender: 'Male' as 'Male' | 'Female' | 'Other' });
   const [isUpdating, setIsUpdating] = useState(false);
+  
+  // Universal password management
+  const [showUniversalPasswordForm, setShowUniversalPasswordForm] = useState(false);
+  const [currentUniversalPassword, setCurrentUniversalPassword] = useState('');
+  const [newUniversalPassword, setNewUniversalPassword] = useState('');
+  const [confirmUniversalPassword, setConfirmUniversalPassword] = useState('');
+  const [isUpdatingUniversalPassword, setIsUpdatingUniversalPassword] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
       loadDiaries();
+      loadUniversalPassword();
     }
   }, [isAuthenticated]);
+
+  const loadUniversalPassword = async () => {
+    try {
+      const password = await getUniversalPassword();
+      setCurrentUniversalPassword(password);
+    } catch (error) {
+      console.error('Error loading universal password:', error);
+      toast.error('Failed to load universal password');
+    }
+  };
 
   useEffect(() => {
     // Filter diaries based on search term
@@ -220,6 +239,47 @@ export default function AdminPage() {
     setEditFormData({ clientId: '', name: '', gender: 'Male' });
   };
 
+  const handleUpdateUniversalPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newUniversalPassword.trim()) {
+      toast.error('Please enter a new password');
+      return;
+    }
+
+    // Validate password
+    const validation = validatePassword(newUniversalPassword);
+    if (!validation.isValid) {
+      toast.error(validation.message || 'Invalid password');
+      return;
+    }
+
+    if (newUniversalPassword !== confirmUniversalPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+
+    setIsUpdatingUniversalPassword(true);
+    
+    try {
+      await setUniversalPassword(newUniversalPassword);
+      setCurrentUniversalPassword(newUniversalPassword);
+      toast.success('Universal therapist password updated successfully!');
+      resetUniversalPasswordForm();
+    } catch (error) {
+      console.error('Error updating universal password:', error);
+      toast.error('Failed to update universal password');
+    } finally {
+      setIsUpdatingUniversalPassword(false);
+    }
+  };
+
+  const resetUniversalPasswordForm = () => {
+    setShowUniversalPasswordForm(false);
+    setNewUniversalPassword('');
+    setConfirmUniversalPassword('');
+  };
+
   const exportToCSV = () => {
     const headers = ['Client ID', 'Name', 'Gender', 'Diary URL', 'Created At'];
     const csvContent = [
@@ -322,6 +382,13 @@ export default function AdminPage() {
               >
                 <Settings size={18} />
                 Change Password
+              </button>
+              <button
+                onClick={() => setShowUniversalPasswordForm(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors"
+              >
+                <Lock size={18} />
+                Universal Password
               </button>
               <button
                 onClick={() => setIsAuthenticated(false)}
@@ -882,6 +949,105 @@ export default function AdminPage() {
                 </button>
               </div>
             </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Universal Password Modal */}
+      {showUniversalPasswordForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                <Lock size={24} className="text-blue-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Universal Therapist Password</h2>
+                <p className="text-gray-600">Manage universal access for therapists</p>
+              </div>
+            </div>
+            
+            {/* Current Password Display */}
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Current Universal Password
+              </label>
+              <div className="font-mono text-lg bg-white p-2 rounded border">
+                {currentUniversalPassword || 'Loading...'}
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                This password allows therapists to unlock any diary
+              </p>
+            </div>
+            
+            <form onSubmit={handleUpdateUniversalPassword} className="space-y-4">
+              <div>
+                <label htmlFor="newUniversalPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                  New Universal Password
+                </label>
+                <input
+                  type="text"
+                  id="newUniversalPassword"
+                  value={newUniversalPassword}
+                  onChange={(e) => setNewUniversalPassword(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter new universal password"
+                  required
+                  disabled={isUpdatingUniversalPassword}
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="confirmUniversalPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                  Confirm New Password
+                </label>
+                <input
+                  type="text"
+                  id="confirmUniversalPassword"
+                  value={confirmUniversalPassword}
+                  onChange={(e) => setConfirmUniversalPassword(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Confirm new universal password"
+                  required
+                  disabled={isUpdatingUniversalPassword}
+                />
+              </div>
+              
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={resetUniversalPasswordForm}
+                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors"
+                  disabled={isUpdatingUniversalPassword}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUpdatingUniversalPassword || !newUniversalPassword || !confirmUniversalPassword}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isUpdatingUniversalPassword ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Updating...
+                    </>
+                  ) : (
+                    'Update Password'
+                  )}
+                </button>
+              </div>
+            </form>
+            
+            <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
+              <p className="text-xs text-yellow-800">
+                <strong>Warning:</strong> Changing this password will affect all therapists' access to locked diaries. Make sure to communicate the new password to authorized personnel.
+              </p>
+            </div>
           </motion.div>
         </div>
       )}

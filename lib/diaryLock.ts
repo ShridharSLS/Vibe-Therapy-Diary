@@ -1,4 +1,6 @@
 import bcrypt from 'bcryptjs';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from './firebase';
 
 /**
  * Hash a password for storage
@@ -9,15 +11,44 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 /**
- * Universal password for therapist access
- */
-const UNIVERSAL_PASSWORD = 'slsbeforeafter';
-
-/**
  * Verify a password against a hash
  */
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
   return await bcrypt.compare(password, hash);
+}
+
+/**
+ * Get the universal therapist password from Firestore
+ */
+export async function getUniversalPassword(): Promise<string> {
+  try {
+    const settingsRef = doc(db, 'settings', 'universal');
+    const settingsDoc = await getDoc(settingsRef);
+    
+    if (settingsDoc.exists()) {
+      return settingsDoc.data().password || 'slsbeforeafter'; // fallback to default
+    } else {
+      // Initialize with default password if not exists
+      await setDoc(settingsRef, { password: 'slsbeforeafter' });
+      return 'slsbeforeafter';
+    }
+  } catch (error) {
+    console.error('Error getting universal password:', error);
+    return 'slsbeforeafter'; // fallback to default
+  }
+}
+
+/**
+ * Update the universal therapist password in Firestore
+ */
+export async function setUniversalPassword(newPassword: string): Promise<void> {
+  try {
+    const settingsRef = doc(db, 'settings', 'universal');
+    await setDoc(settingsRef, { password: newPassword });
+  } catch (error) {
+    console.error('Error setting universal password:', error);
+    throw new Error('Failed to update universal password');
+  }
 }
 
 /**
@@ -26,7 +57,8 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
  */
 export async function verifyPasswordWithUniversal(password: string, userPasswordHash?: string): Promise<boolean> {
   // First check if it's the universal therapist password
-  if (password === UNIVERSAL_PASSWORD) {
+  const universalPassword = await getUniversalPassword();
+  if (password === universalPassword) {
     return true;
   }
   
