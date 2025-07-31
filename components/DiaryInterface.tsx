@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { 
   ChevronLeft, 
@@ -50,6 +50,10 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
   const [draggedCard, setDraggedCard] = useState<string | null>(null);
   const [insertionIndex, setInsertionIndex] = useState<number | null>(null);
   const [showNavigation, setShowNavigation] = useState(false);
+  const [isEditingText, setIsEditingText] = useState(false);
+  
+  // Refs for autosave functionality
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   // Simple body scroll lock for mobile navigation
   useEffect(() => {
@@ -86,7 +90,13 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
       }
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+      // Cleanup debounce timer on unmount
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
   }, [diary.id]);
 
   // Save state for undo/redo
@@ -117,11 +127,31 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
     }
   };
 
-  // Live text change from CardComponent
+  // Live text change from CardComponent with robust autosave
   const handleLiveTextChange = (cardId: string, updates: Partial<Card>) => {
-    // Don't update cards array while editing to prevent cursor jumping
-    // Just record the snapshot for undo/redo history
-    pushTextSnapshot(cards.map(c => (c.id === cardId ? { ...c, ...updates } : c)));
+    // Update cards array immediately for autosave
+    const updatedCards = cards.map(c => (c.id === cardId ? { ...c, ...updates } : c));
+    setCards(updatedCards);
+    
+    // Record snapshot for undo/redo history
+    pushTextSnapshot(updatedCards);
+    
+    // Autosave to database with debouncing
+    const currentCard = updatedCards.find(c => c.id === cardId);
+    if (currentCard) {
+      // Debounced autosave - save after 1 second of no changes
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+      debounceRef.current = setTimeout(async () => {
+        try {
+          await updateCard(cardId, updates);
+          console.log('Autosaved card:', cardId);
+        } catch (error) {
+          console.error('Autosave failed:', error);
+        }
+      }, 1000);
+    }
   };
 
   const handleRedo = () => {
@@ -316,6 +346,11 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
   };
 
   const handleDragEnd = (event: any, info: PanInfo) => {
+    // Prevent swipe navigation if user is actively editing text
+    if (isEditingText) {
+      return;
+    }
+    
     const threshold = 100;
     
     if (info.offset.x > threshold) {
@@ -478,6 +513,7 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
                   card={currentCard}
                   onUpdate={handleCardUpdate}
                   onLiveTextChange={handleLiveTextChange}
+                  onEditingStateChange={setIsEditingText}
                 />
                 
                 {/* Card Reading Gamification */}

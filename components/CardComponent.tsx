@@ -16,11 +16,12 @@ interface CardComponentProps {
   card: Card;
   onUpdate: (cardId: string, updates: Partial<Card>) => void;
   onLiveTextChange?: (cardId: string, updates: Partial<Card>) => void;
+  onEditingStateChange?: (isEditing: boolean) => void;
 }
 
 const CHARACTER_LIMIT = 1000;
 
-export default function CardComponent({ card, onUpdate, onLiveTextChange }: CardComponentProps) {
+export default function CardComponent({ card, onUpdate, onLiveTextChange, onEditingStateChange }: CardComponentProps) {
   const [isEditingTopic, setIsEditingTopic] = useState(false);
   const [isEditingBody, setIsEditingBody] = useState(false);
   const [topicValue, setTopicValue] = useState(card.topic);
@@ -49,6 +50,12 @@ export default function CardComponent({ card, onUpdate, onLiveTextChange }: Card
       setBodyValue(card.bodyText);
     }
   }, [card.topic, card.bodyText, isEditingTopic, isEditingBody]);
+
+  // Track editing state changes and notify parent
+  useEffect(() => {
+    const isEditing = isEditingTopic || isEditingBody;
+    onEditingStateChange?.(isEditing);
+  }, [isEditingTopic, isEditingBody, onEditingStateChange]);
 
   const handleTopicEdit = () => {
     setIsEditingTopic(true);
