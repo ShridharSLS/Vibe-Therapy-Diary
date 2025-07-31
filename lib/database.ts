@@ -31,6 +31,8 @@ export const createDiary = async (
       gender,
       url: `/diary/${diaryId}`,
       cardReadingCount: 0,
+      isLocked: false,
+      passwordHash: null,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     };
@@ -63,6 +65,8 @@ export const getDiary = async (diaryId: string): Promise<Diary | null> => {
       gender: data.gender,
       url: data.url,
       cardReadingCount: data.cardReadingCount || 0,
+      isLocked: data.isLocked || false,
+      passwordHash: data.passwordHash || undefined,
       createdAt: data.createdAt.toDate(),
       updatedAt: data.updatedAt.toDate(),
     };
@@ -94,6 +98,8 @@ export const getAllDiaries = async (): Promise<Diary[]> => {
     return querySnapshot.docs.map(doc => ({
       ...doc.data(),
       cardReadingCount: doc.data().cardReadingCount || 0,
+      isLocked: doc.data().isLocked || false,
+      passwordHash: doc.data().passwordHash || undefined,
       createdAt: doc.data().createdAt.toDate(),
       updatedAt: doc.data().updatedAt.toDate(),
     })) as Diary[];
@@ -367,4 +373,52 @@ export const subscribeToCards = (
     });
     callback(cards);
   });
+};
+
+// Lock management functions
+export const setDiaryLock = async (
+  diaryId: string,
+  passwordHash: string
+): Promise<void> => {
+  try {
+    const diariesRef = collection(db, 'diaries');
+    const diaryQuery = query(diariesRef, where('id', '==', diaryId));
+    const querySnapshot = await getDocs(diaryQuery);
+    
+    if (querySnapshot.empty) {
+      throw new Error('Diary not found');
+    }
+
+    const diaryDoc = querySnapshot.docs[0];
+    await updateDoc(diaryDoc.ref, {
+      isLocked: true,
+      passwordHash: passwordHash,
+      updatedAt: Timestamp.now(),
+    });
+  } catch (error) {
+    console.error('Error setting diary lock:', error);
+    throw new Error('Failed to set diary lock');
+  }
+};
+
+export const removeDiaryLock = async (diaryId: string): Promise<void> => {
+  try {
+    const diariesRef = collection(db, 'diaries');
+    const diaryQuery = query(diariesRef, where('id', '==', diaryId));
+    const querySnapshot = await getDocs(diaryQuery);
+    
+    if (querySnapshot.empty) {
+      throw new Error('Diary not found');
+    }
+
+    const diaryDoc = querySnapshot.docs[0];
+    await updateDoc(diaryDoc.ref, {
+      isLocked: false,
+      passwordHash: null,
+      updatedAt: Timestamp.now(),
+    });
+  } catch (error) {
+    console.error('Error removing diary lock:', error);
+    throw new Error('Failed to remove diary lock');
+  }
 };

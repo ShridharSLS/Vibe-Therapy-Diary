@@ -12,7 +12,7 @@
     "firebase:emulators": "npx firebase emulators:start"
   },
   "dependencies": {
-    "@types/bcryptjs": "^2.4.2",
+    "@types/bcryptjs": "^2.4.6",
     "bcryptjs": "^2.4.3",
     "firebase": "^9.23.0",
     "framer-motion": "^10.16.16",

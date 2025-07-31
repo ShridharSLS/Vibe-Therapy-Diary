@@ -5,6 +5,8 @@ export interface Diary {
   gender: 'Male' | 'Female' | 'Other';
   url: string;
   cardReadingCount: number;
+  isLocked: boolean;
+  passwordHash?: string;
   createdAt: Date;
   updatedAt: Date;
 }

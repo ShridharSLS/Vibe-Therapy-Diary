@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { getDiary } from '@/lib/database';
 import { Diary } from '@/lib/types';
 import DiaryInterface from '@/components/DiaryInterface';
+import DiaryUnlockScreen from '@/components/DiaryUnlockScreen';
 import toast from 'react-hot-toast';
 
 export default function DiaryPage() {
@@ -14,6 +15,7 @@ export default function DiaryPage() {
   
   const [diary, setDiary] = useState<Diary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUnlocked, setIsUnlocked] = useState(false);
 
   useEffect(() => {
     const loadDiary = async () => {
@@ -25,6 +27,11 @@ export default function DiaryPage() {
           return;
         }
         setDiary(diaryData);
+        
+        // If diary is not locked, automatically unlock it
+        if (!diaryData.isLocked) {
+          setIsUnlocked(true);
+        }
       } catch (error) {
         console.error('Error loading diary:', error);
         toast.error('Failed to load diary');
@@ -38,6 +45,15 @@ export default function DiaryPage() {
       loadDiary();
     }
   }, [diaryId, router]);
+
+  const handleUnlock = () => {
+    setIsUnlocked(true);
+    toast.success('Diary unlocked successfully');
+  };
+
+  const handleBack = () => {
+    router.push('/');
+  };
 
 
 
@@ -66,7 +82,16 @@ export default function DiaryPage() {
     );
   }
 
-
+  // If diary is locked and not unlocked, show unlock screen
+  if (diary && diary.isLocked && !isUnlocked) {
+    return (
+      <DiaryUnlockScreen
+        diary={diary}
+        onUnlock={handleUnlock}
+        onBack={handleBack}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen">

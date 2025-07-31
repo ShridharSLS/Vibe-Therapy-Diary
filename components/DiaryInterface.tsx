@@ -16,7 +16,9 @@ import {
   Redo,
   Grid3X3,
   X,
-  List
+  List,
+  Lock,
+  Unlock
 } from 'lucide-react';
 import { Diary, Card } from '@/lib/types';
 import { 
@@ -25,10 +27,14 @@ import {
   updateCard, 
   deleteCard, 
   duplicateCard,
-  incrementCardReadingCount 
+  incrementCardReadingCount,
+  setDiaryLock,
+  removeDiaryLock 
 } from '@/lib/database';
 import CardComponent, { CardRef } from './CardComponent';
+import PasswordModal from './PasswordModal';
 import { sanitizeHtml } from '@/lib/sanitize';
+import { hashPassword, verifyPassword } from '@/lib/diaryLock';
 import toast from 'react-hot-toast';
 
 interface DiaryInterfaceProps {
@@ -54,6 +60,12 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
   const [showNavigation, setShowNavigation] = useState(false);
   const [isEditingText, setIsEditingText] = useState(false);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  
+  // Lock-related state
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordModalMode, setPasswordModalMode] = useState<'set' | 'verify' | 'disable'>('set');
+  const [passwordModalTitle, setPasswordModalTitle] = useState('');
+  const [isLockLoading, setIsLockLoading] = useState(false);
   
   // Refs for autosave functionality
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -375,6 +387,65 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
     return `${baseUrl}?${params.toString()}`;
   };
 
+  // Lock toggle handler
+  const handleLockToggle = () => {
+    if (diary.isLocked) {
+      // Diary is locked, show modal to disable lock
+      setPasswordModalMode('disable');
+      setPasswordModalTitle('Remove Diary Lock');
+      setShowPasswordModal(true);
+    } else {
+      // Diary is unlocked, show modal to set lock
+      setPasswordModalMode('set');
+      setPasswordModalTitle('Set Diary Lock');
+      setShowPasswordModal(true);
+    }
+  };
+
+  // Handle password modal submission
+  const handlePasswordSubmit = async (password: string) => {
+    setIsLockLoading(true);
+    
+    try {
+      if (passwordModalMode === 'set') {
+        // Setting a new lock
+        const hashedPassword = await hashPassword(password);
+        await setDiaryLock(diary.id, hashedPassword);
+        
+        // Update local diary state
+        setDiary(prev => ({ ...prev, isLocked: true, passwordHash: hashedPassword }));
+        
+        toast.success('Diary lock has been set successfully');
+        setShowPasswordModal(false);
+        
+      } else if (passwordModalMode === 'disable') {
+        // Removing existing lock - verify password first
+        if (!diary.passwordHash) {
+          throw new Error('No password hash found');
+        }
+        
+        const isValid = await verifyPassword(password, diary.passwordHash);
+        if (!isValid) {
+          throw new Error('Incorrect password');
+        }
+        
+        await removeDiaryLock(diary.id);
+        
+        // Update local diary state
+        setDiary(prev => ({ ...prev, isLocked: false, passwordHash: undefined }));
+        
+        toast.success('Diary lock has been removed successfully');
+        setShowPasswordModal(false);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred';
+      toast.error(errorMessage);
+      throw error; // Re-throw to let modal handle the error display
+    } finally {
+      setIsLockLoading(false);
+    }
+  };
+
   // Handle Google Form registration
   const handleGoogleFormRegistration = () => {
     const formUrl = generateGoogleFormUrl();
@@ -442,6 +513,25 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
               <div className="text-sm text-gray-500">
                 {cards.length > 0 ? `${currentIndex + 1} of ${cards.length}` : '0 cards'}
               </div>
+              {/* Lock Toggle Button */}
+              <button
+                onClick={handleLockToggle}
+                disabled={isLockLoading}
+                className={`p-1 rounded-lg transition-colors ${
+                  diary.isLocked 
+                    ? 'bg-red-100 hover:bg-red-200 text-red-700' 
+                    : 'bg-green-100 hover:bg-green-200 text-green-700'
+                } disabled:opacity-50`}
+                title={diary.isLocked ? 'Diary is locked - click to unlock' : 'Diary is unlocked - click to lock'}
+              >
+                {isLockLoading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
+                ) : diary.isLocked ? (
+                  <Lock size={16} />
+                ) : (
+                  <Unlock size={16} />
+                )}
+              </button>
               {cards.length > 0 && (
                 <button
                   onClick={() => setShowNavigation(true)}
@@ -1003,6 +1093,16 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
           </>
         )}
       </AnimatePresence>
+
+      {/* Password Modal */}
+      <PasswordModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        onSubmit={handlePasswordSubmit}
+        mode={passwordModalMode}
+        title={passwordModalTitle}
+        isLoading={isLockLoading}
+      />
     </div>
   );
 }
