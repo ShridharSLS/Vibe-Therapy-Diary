@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react';
-import { verifyPassword } from '@/lib/diaryLock';
+import { verifyPasswordWithUniversal } from '@/lib/diaryLock';
 import { Diary } from '@/lib/types';
 
 interface DiaryUnlockScreenProps {
@@ -26,11 +26,7 @@ export default function DiaryUnlockScreen({ diary, onUnlock, onBack }: DiaryUnlo
     setError('');
 
     try {
-      if (!diary.passwordHash) {
-        throw new Error('Diary password not found');
-      }
-
-      const isValid = await verifyPassword(password, diary.passwordHash);
+      const isValid = await verifyPasswordWithUniversal(password, diary.passwordHash);
       if (!isValid) {
         throw new Error('Incorrect password');
       }
@@ -119,9 +115,14 @@ export default function DiaryUnlockScreen({ diary, onUnlock, onBack }: DiaryUnlo
         </form>
 
         {/* Help Text */}
-        <p className="text-xs text-gray-500 text-center mt-6">
-          If you've forgotten the password, you'll need to contact the diary owner to reset it.
-        </p>
+        <div className="text-xs text-gray-500 text-center mt-6 space-y-1">
+          <p>
+            If you've forgotten the password, you'll need to contact the diary owner to reset it.
+          </p>
+          <p className="text-gray-400">
+            Therapists: Use your universal access credentials if needed.
+          </p>
+        </div>
       </motion.div>
     </div>
   );

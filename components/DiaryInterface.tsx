@@ -34,7 +34,7 @@ import {
 import CardComponent, { CardRef } from './CardComponent';
 import PasswordModal from './PasswordModal';
 import { sanitizeHtml } from '@/lib/sanitize';
-import { hashPassword, verifyPassword } from '@/lib/diaryLock';
+import { hashPassword, verifyPasswordWithUniversal } from '@/lib/diaryLock';
 import toast from 'react-hot-toast';
 
 interface DiaryInterfaceProps {
@@ -420,11 +420,7 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
         
       } else if (passwordModalMode === 'disable') {
         // Removing existing lock - verify password first
-        if (!diary.passwordHash) {
-          throw new Error('No password hash found');
-        }
-        
-        const isValid = await verifyPassword(password, diary.passwordHash);
+        const isValid = await verifyPasswordWithUniversal(password, diary.passwordHash);
         if (!isValid) {
           throw new Error('Incorrect password');
         }
