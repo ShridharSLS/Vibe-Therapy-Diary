@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import { useState, useEffect, useRef, useImperativeHandle, forwardRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Edit3, Check, X, Bold, Italic, List } from 'lucide-react';
 import { Card } from '@/lib/types';
@@ -35,6 +35,12 @@ const CardComponent = forwardRef<CardRef, CardComponentProps>((
   const [isEditingBody, setIsEditingBody] = useState(false);
   const [topicValue, setTopicValue] = useState(card.topic);
   const [bodyValue, setBodyValue] = useState(card.bodyText);
+  
+  // History stacks for undo/redo functionality
+  const [bodyHistory, setBodyHistory] = useState<string[]>([card.bodyText]);
+  const [bodyHistoryIndex, setBodyHistoryIndex] = useState(0); // Current position in history
+  const [topicHistory, setTopicHistory] = useState<string[]>([card.topic]);
+  const [topicHistoryIndex, setTopicHistoryIndex] = useState(0);
   
   const topicRef = useRef<HTMLTextAreaElement>(null);
   // Use forwardRef with ReactQuill
@@ -91,6 +97,92 @@ const CardComponent = forwardRef<CardRef, CardComponentProps>((
     }
   };
 
+  // Function to add item to history stack
+  const addToHistory = useCallback((value: string, isTopicField: boolean) => {
+    if (isTopicField) {
+      // Only add to history if value is different from current
+      if (topicHistory[topicHistoryIndex] !== value) {
+        // Cut off any forward history when a new change is made
+        const newHistory = topicHistory.slice(0, topicHistoryIndex + 1).concat(value);
+        setTopicHistory(newHistory);
+        setTopicHistoryIndex(newHistory.length - 1);
+      }
+    } else { // Body field
+      // Only add to history if value is different from current
+      if (bodyHistory[bodyHistoryIndex] !== value) {
+        // Cut off any forward history when a new change is made
+        const newHistory = bodyHistory.slice(0, bodyHistoryIndex + 1).concat(value);
+        setBodyHistory(newHistory);
+        setBodyHistoryIndex(newHistory.length - 1);
+      }
+    }
+  }, [topicHistory, topicHistoryIndex, bodyHistory, bodyHistoryIndex]);
+
+  // Handle undo/redo keyboard shortcuts
+  const handleKeyboardShortcut = useCallback((e: KeyboardEvent) => {
+    // Check if we're in a text input or contentEditable element
+    const target = e.target as HTMLElement;
+    const isTextInput = (
+      target.tagName === 'INPUT' || 
+      target.tagName === 'TEXTAREA' || 
+      target.getAttribute('contenteditable') === 'true'
+    );
+
+    // If in edit mode, let the editor handle its own undo/redo
+    if (isTextInput && (isEditingTopic || isEditingBody)) {
+      return;
+    }
+
+    // Handle Undo: Cmd+Z or Ctrl+Z
+    if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      
+      // Determine if we should undo topic or body based on which was most recently changed
+      // For simplicity, always undoing body text first, then topic
+      if (bodyHistoryIndex > 0) {
+        const newIndex = bodyHistoryIndex - 1;
+        setBodyHistoryIndex(newIndex);
+        setBodyValue(bodyHistory[newIndex]);
+        // Update in database
+        onUpdate(card.id, { bodyText: bodyHistory[newIndex] });
+      } else if (topicHistoryIndex > 0) {
+        const newIndex = topicHistoryIndex - 1;
+        setTopicHistoryIndex(newIndex);
+        setTopicValue(topicHistory[newIndex]);
+        // Update in database
+        onUpdate(card.id, { topic: topicHistory[newIndex] });
+      }
+    }
+    
+    // Handle Redo: Cmd+Shift+Z or Ctrl+Shift+Z or Ctrl+Y
+    if ((e.metaKey || e.ctrlKey) && ((e.key === 'z' && e.shiftKey) || e.key === 'y')) {
+      e.preventDefault();
+      
+      // For simplicity, always redoing topic first, then body
+      if (topicHistoryIndex < topicHistory.length - 1) {
+        const newIndex = topicHistoryIndex + 1;
+        setTopicHistoryIndex(newIndex);
+        setTopicValue(topicHistory[newIndex]);
+        // Update in database
+        onUpdate(card.id, { topic: topicHistory[newIndex] });
+      } else if (bodyHistoryIndex < bodyHistory.length - 1) {
+        const newIndex = bodyHistoryIndex + 1;
+        setBodyHistoryIndex(newIndex);
+        setBodyValue(bodyHistory[newIndex]);
+        // Update in database
+        onUpdate(card.id, { bodyText: bodyHistory[newIndex] });
+      }
+    }
+  }, [topicHistory, topicHistoryIndex, bodyHistory, bodyHistoryIndex, isEditingTopic, isEditingBody, onUpdate, card.id]);
+
+  // Add global keyboard listener for undo/redo
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyboardShortcut);
+    return () => {
+      window.removeEventListener('keydown', handleKeyboardShortcut);
+    };
+  }, [handleKeyboardShortcut]);
+  
   useEffect(() => {
     // Only update from props if we're not actively editing
     // This prevents cursor jumping when typing
@@ -133,6 +225,8 @@ const CardComponent = forwardRef<CardRef, CardComponentProps>((
     // Only update if content actually changed
     if (topicValue !== card.topic) {
       onUpdate(card.id, { topic: topicValue });
+      // Add to history when saved
+      addToHistory(topicValue, true);
     }
     setIsEditingTopic(false);
   };
@@ -159,6 +253,8 @@ const CardComponent = forwardRef<CardRef, CardComponentProps>((
     // Only update if content actually changed
     if (contentToSave !== card.bodyText) {
       onUpdate(card.id, { bodyText: contentToSave });
+      // Add to history when saved
+      addToHistory(contentToSave, false);
     }
     setIsEditingBody(false);
   };
