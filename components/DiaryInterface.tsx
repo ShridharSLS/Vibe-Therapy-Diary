@@ -32,6 +32,7 @@ import {
   removeDiaryLock 
 } from '@/lib/database';
 import CardComponent, { CardRef } from './CardComponent';
+import { SituationSelector } from './SituationSelector';
 import PasswordModal from './PasswordModal';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { hashPassword, verifyPasswordWithUniversal } from '@/lib/diaryLock';
@@ -59,6 +60,7 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
   const [insertionIndex, setInsertionIndex] = useState<number | null>(null);
   const [showNavigation, setShowNavigation] = useState(false);
   const [isEditingText, setIsEditingText] = useState(false);
+  const [situationSelectorOpen, setSituationSelectorOpen] = useState(false);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   
   // Lock-related state
@@ -285,18 +287,72 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
   };
 
   const handleCardDone = async () => {
+    if (!diary) return;
+    
     try {
       await incrementCardReadingCount(diary.id);
       // Update local diary state immediately
-      setDiary((prev: Diary) => ({
+      setDiary(prev => ({
         ...prev,
         cardReadingCount: (prev.cardReadingCount || 0) + 1
       }));
-      toast.success('Card marked as done! Reading count increased.');
+      toast.success('Card marked as done!');
     } catch (error) {
-      console.error('Error marking card as done:', error);
-      toast.error('Failed to mark card as done');
+      toast.error('Failed to update reading count');
     }
+  };
+
+  const handleSituationTransfer = (data: {
+    situation: string;
+    beforeItems: string[];
+    afterItems: { beforeItemId: string; beforeItemTitle: string; title: string }[];
+  }) => {
+    if (!currentCard) return;
+
+    // Format the situation content as HTML ordered list with nested unordered lists
+    let situationContent = '<ol>';
+    
+    data.beforeItems.forEach((beforeItem, beforeIndex) => {
+      // Add numbered list item for before item
+      situationContent += `<li>${beforeItem}`;
+      
+      // Find and add nested unordered list for corresponding after items
+      const relatedAfterItems = data.afterItems.filter(afterItem => 
+        afterItem.beforeItemTitle === beforeItem
+      );
+      
+      if (relatedAfterItems.length > 0) {
+        situationContent += '<ul>';
+        relatedAfterItems.forEach((afterItem) => {
+          situationContent += `<li>${afterItem.title}</li>`;
+        });
+        situationContent += '</ul>';
+      }
+      
+      situationContent += '</li>';
+    });
+    
+    situationContent += '</ol>';
+
+    // Append to the existing card title and body instead of overwriting
+    const newTopic = currentCard.topic 
+      ? `${currentCard.topic} - ${data.situation}` 
+      : data.situation;
+      
+    const newBodyText = currentCard.bodyText 
+      ? `${currentCard.bodyText}\n\n${situationContent.trim()}` 
+      : situationContent.trim();
+
+    // Update the card with appended situation title and body
+    handleCardUpdate(currentCard.id, {
+      topic: newTopic,
+      bodyText: newBodyText
+    });
+
+    // Close the situation selector
+    setSituationSelectorOpen(false);
+    
+    toast.success('Situation appended to card!');
   };
 
   const handleCardReorder = async (draggedCardId: string, targetIndex: number) => {
@@ -663,7 +719,7 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
                 <div className="mt-4 flex items-center justify-center gap-4">
                   <button
                     onClick={handleCardDone}
-                    className="px-6 py-2 bg-after-bg hover:bg-blue-100 text-black font-medium rounded-lg transition-colors duration-200 flex items-center gap-2 shadow-md hover:shadow-lg"
+                    className="px-6 py-2 bg-green-100 hover:bg-green-200 text-green-800 font-medium rounded-lg transition-colors duration-200 flex items-center gap-2 shadow-md hover:shadow-lg"
                   >
                     <span>✓</span>
                     Done
@@ -672,6 +728,13 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
                     Total Reads: {diary.cardReadingCount || 0}
                   </span>
                 </div>
+                
+                {/* Situation Selector */}
+                <SituationSelector
+                  isOpen={situationSelectorOpen}
+                  onToggle={() => setSituationSelectorOpen(!situationSelectorOpen)}
+                  onTransfer={handleSituationTransfer}
+                />
               </motion.div>
             ) : (
               <motion.div
