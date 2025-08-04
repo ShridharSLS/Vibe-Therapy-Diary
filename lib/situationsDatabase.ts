@@ -14,7 +14,7 @@ import { db } from './firebase';
 import { Situation, BeforeItem, AfterItem } from './types';
 
 // Situation CRUD Operations
-export const createSituation = async (title: string, description?: string): Promise<string> => {
+export const createSituation = async (title: string): Promise<string> => {
   try {
     // Get current max order
     const situationsRef = collection(db, 'situations');
@@ -25,7 +25,6 @@ export const createSituation = async (title: string, description?: string): Prom
     const situationData = {
       id: situationId,
       title: title.trim(),
-      description: description?.trim() || '',
       order: maxOrder + 1,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
@@ -39,9 +38,44 @@ export const createSituation = async (title: string, description?: string): Prom
   }
 };
 
+// Bulk create situations
+export const createMultipleSituations = async (titles: string[]): Promise<string[]> => {
+  try {
+    const situationsRef = collection(db, 'situations');
+    const snapshot = await getDocs(query(situationsRef, orderBy('order', 'desc')));
+    let maxOrder = snapshot.empty ? 0 : snapshot.docs[0].data().order;
+    
+    const createdIds: string[] = [];
+    const batch = [];
+    
+    for (const title of titles) {
+      if (title.trim()) {
+        maxOrder += 1;
+        const situationId = `situation_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const situationData = {
+          id: situationId,
+          title: title.trim(),
+          order: maxOrder,
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
+        };
+        
+        batch.push(addDoc(collection(db, 'situations'), situationData));
+        createdIds.push(situationId);
+      }
+    }
+    
+    await Promise.all(batch);
+    return createdIds;
+  } catch (error) {
+    console.error('Error creating multiple situations:', error);
+    throw new Error('Failed to create situations');
+  }
+};
+
 export const updateSituation = async (
   situationId: string, 
-  updates: { title?: string; description?: string }
+  updates: { title?: string }
 ): Promise<void> => {
   try {
     const situationsRef = collection(db, 'situations');
@@ -56,9 +90,6 @@ export const updateSituation = async (
       
       if (updates.title !== undefined) {
         updateData.title = updates.title.trim();
-      }
-      if (updates.description !== undefined) {
-        updateData.description = updates.description.trim();
       }
       
       await updateDoc(docRef, updateData);
@@ -102,7 +133,6 @@ export const getAllSituations = async (): Promise<Situation[]> => {
       return {
         id: data.id,
         title: data.title,
-        description: data.description,
         order: data.order,
         createdAt: data.createdAt.toDate(),
         updatedAt: data.updatedAt.toDate(),
@@ -117,8 +147,7 @@ export const getAllSituations = async (): Promise<Situation[]> => {
 // Before Item CRUD Operations
 export const createBeforeItem = async (
   situationId: string, 
-  title: string, 
-  description?: string
+  title: string
 ): Promise<string> => {
   try {
     // Get current max order for this situation
@@ -136,7 +165,6 @@ export const createBeforeItem = async (
       id: beforeItemId,
       situationId,
       title: title.trim(),
-      description: description?.trim() || '',
       order: maxOrder + 1,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
@@ -152,7 +180,7 @@ export const createBeforeItem = async (
 
 export const updateBeforeItem = async (
   beforeItemId: string, 
-  updates: { title?: string; description?: string }
+  updates: { title?: string }
 ): Promise<void> => {
   try {
     const beforeItemsRef = collection(db, 'beforeItems');
@@ -167,9 +195,6 @@ export const updateBeforeItem = async (
       
       if (updates.title !== undefined) {
         updateData.title = updates.title.trim();
-      }
-      if (updates.description !== undefined) {
-        updateData.description = updates.description.trim();
       }
       
       await updateDoc(docRef, updateData);
@@ -202,6 +227,47 @@ export const deleteBeforeItem = async (beforeItemId: string): Promise<void> => {
   }
 };
 
+// Bulk create before items
+export const createMultipleBeforeItems = async (situationId: string, titles: string[]): Promise<string[]> => {
+  try {
+    const beforeItemsRef = collection(db, 'beforeItems');
+    const q = query(
+      beforeItemsRef, 
+      where('situationId', '==', situationId),
+      orderBy('order', 'desc')
+    );
+    const snapshot = await getDocs(q);
+    let maxOrder = snapshot.empty ? 0 : snapshot.docs[0].data().order;
+    
+    const createdIds: string[] = [];
+    const batch = [];
+    
+    for (const title of titles) {
+      if (title.trim()) {
+        maxOrder += 1;
+        const beforeItemId = `before_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const beforeItemData = {
+          id: beforeItemId,
+          situationId,
+          title: title.trim(),
+          order: maxOrder,
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
+        };
+        
+        batch.push(addDoc(collection(db, 'beforeItems'), beforeItemData));
+        createdIds.push(beforeItemId);
+      }
+    }
+    
+    await Promise.all(batch);
+    return createdIds;
+  } catch (error) {
+    console.error('Error creating multiple before items:', error);
+    throw new Error('Failed to create before items');
+  }
+};
+
 export const getBeforeItems = async (situationId: string): Promise<BeforeItem[]> => {
   try {
     const beforeItemsRef = collection(db, 'beforeItems');
@@ -218,7 +284,6 @@ export const getBeforeItems = async (situationId: string): Promise<BeforeItem[]>
         id: data.id,
         situationId: data.situationId,
         title: data.title,
-        description: data.description,
         order: data.order,
         createdAt: data.createdAt.toDate(),
         updatedAt: data.updatedAt.toDate(),
@@ -233,8 +298,7 @@ export const getBeforeItems = async (situationId: string): Promise<BeforeItem[]>
 // After Item CRUD Operations
 export const createAfterItem = async (
   beforeItemId: string, 
-  title: string, 
-  description?: string
+  title: string
 ): Promise<string> => {
   try {
     // Get current max order for this before item
@@ -252,7 +316,6 @@ export const createAfterItem = async (
       id: afterItemId,
       beforeItemId,
       title: title.trim(),
-      description: description?.trim() || '',
       order: maxOrder + 1,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
@@ -268,7 +331,7 @@ export const createAfterItem = async (
 
 export const updateAfterItem = async (
   afterItemId: string, 
-  updates: { title?: string; description?: string }
+  updates: { title?: string }
 ): Promise<void> => {
   try {
     const afterItemsRef = collection(db, 'afterItems');
@@ -283,9 +346,6 @@ export const updateAfterItem = async (
       
       if (updates.title !== undefined) {
         updateData.title = updates.title.trim();
-      }
-      if (updates.description !== undefined) {
-        updateData.description = updates.description.trim();
       }
       
       await updateDoc(docRef, updateData);
@@ -327,7 +387,6 @@ export const getAfterItems = async (beforeItemId: string): Promise<AfterItem[]> 
         id: data.id,
         beforeItemId: data.beforeItemId,
         title: data.title,
-        description: data.description,
         order: data.order,
         createdAt: data.createdAt.toDate(),
         updatedAt: data.updatedAt.toDate(),
@@ -336,5 +395,46 @@ export const getAfterItems = async (beforeItemId: string): Promise<AfterItem[]> 
   } catch (error) {
     console.error('Error getting after items:', error);
     return [];
+  }
+};
+
+// Bulk create after items
+export const createMultipleAfterItems = async (beforeItemId: string, titles: string[]): Promise<string[]> => {
+  try {
+    const afterItemsRef = collection(db, 'afterItems');
+    const q = query(
+      afterItemsRef, 
+      where('beforeItemId', '==', beforeItemId),
+      orderBy('order', 'desc')
+    );
+    const snapshot = await getDocs(q);
+    let maxOrder = snapshot.empty ? 0 : snapshot.docs[0].data().order;
+    
+    const createdIds: string[] = [];
+    const batch = [];
+    
+    for (const title of titles) {
+      if (title.trim()) {
+        maxOrder += 1;
+        const afterItemId = `after_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const afterItemData = {
+          id: afterItemId,
+          beforeItemId,
+          title: title.trim(),
+          order: maxOrder,
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
+        };
+        
+        batch.push(addDoc(collection(db, 'afterItems'), afterItemData));
+        createdIds.push(afterItemId);
+      }
+    }
+    
+    await Promise.all(batch);
+    return createdIds;
+  } catch (error) {
+    console.error('Error creating multiple after items:', error);
+    throw new Error('Failed to create after items');
   }
 };

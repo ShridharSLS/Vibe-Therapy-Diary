@@ -1,32 +1,25 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { Plus, X, FileText, CheckCircle, ArrowRight } from 'lucide-react';
 
-interface SituationModalProps {
+interface BulkAddModalProps {
   isOpen: boolean;
-  isEditing: boolean;
-  form: { title: string; description: string };
-  setForm: (form: { title: string; description: string }) => void;
-  onSubmit: (e: React.FormEvent) => void;
+  type: 'situation' | 'before' | 'after';
+  title: string;
+  onSubmit: (items: string[]) => void;
   onClose: () => void;
+  isLoading?: boolean;
 }
 
-interface BeforeModalProps {
+interface EditModalProps {
   isOpen: boolean;
-  isEditing: boolean;
-  form: { title: string; description: string; situationId: string };
-  setForm: (form: { title: string; description: string; situationId: string }) => void;
-  onSubmit: (e: React.FormEvent) => void;
+  type: 'situation' | 'before' | 'after';
+  currentTitle: string;
+  onSubmit: (title: string) => void;
   onClose: () => void;
-}
-
-interface AfterModalProps {
-  isOpen: boolean;
-  isEditing: boolean;
-  form: { title: string; description: string; beforeItemId: string };
-  setForm: (form: { title: string; description: string; beforeItemId: string }) => void;
-  onSubmit: (e: React.FormEvent) => void;
-  onClose: () => void;
+  isLoading?: boolean;
 }
 
 interface DeleteModalProps {
@@ -37,8 +30,167 @@ interface DeleteModalProps {
   onClose: () => void;
 }
 
-export function SituationModal({ isOpen, isEditing, form, setForm, onSubmit, onClose }: SituationModalProps) {
+// BulkAddModal component - properly exported with the expected name
+export const BulkAddModal = ({
+  isOpen,
+  type,
+  title,
+  onSubmit,
+  onClose,
+  isLoading = false
+}: BulkAddModalProps) => {
+  const [textValue, setTextValue] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      setTextValue('');
+    }
+  }, [isOpen]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const lines = textValue
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line !== '');
+    
+    if (lines.length === 0) return;
+    
+    onSubmit(lines);
+  };
+
+  const getTypeColor = () => {
+    switch (type) {
+      case 'situation': return 'text-blue-600';
+      case 'before': return 'text-orange-600';
+      case 'after': return 'text-green-600';
+      default: return 'text-blue-600';
+    }
+  };
+
+  const getTypeIcon = () => {
+    switch (type) {
+      case 'situation': return <FileText size={20} />;
+      case 'before': return <ArrowRight size={20} />;
+      case 'after': return <CheckCircle size={20} />;
+      default: return <FileText size={20} />;
+    }
+  };
+
+  const getItemCount = () => {
+    const lines = textValue
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line !== '');
+    return lines.length;
+  };
+
+  const getPlaceholderText = () => {
+    switch (type) {
+      case 'situation': return 'Enter situation titles, one per line:\n\nMeeting with boss\nPublic speaking\nJob interview';
+      case 'before': return 'Enter before item titles, one per line:\n\nFeeling anxious\nSweaty palms\nRacing thoughts';
+      case 'after': return 'Enter after item titles, one per line:\n\nFeeling confident\nCalm and relaxed\nClear thinking';
+      default: return 'Enter titles, one per line';
+    }
+  };
+
   if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white rounded-lg shadow-xl w-full max-w-md"
+      >
+        <div className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className={getTypeColor()}>
+              {getTypeIcon()}
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Enter one {type} per line:
+              </label>
+              <textarea
+                value={textValue}
+                onChange={(e) => setTextValue(e.target.value)}
+                placeholder={getPlaceholderText()}
+                rows={6}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                autoFocus
+              />
+              {getItemCount() > 0 && (
+                <p className="text-sm text-gray-500 mt-1">
+                  {getItemCount()} item{getItemCount() !== 1 ? 's' : ''} will be created
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isLoading}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isLoading || getItemCount() === 0}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isLoading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  `Create ${getItemCount()} Item${getItemCount() !== 1 ? 's' : ''}`
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+// EditModal component - properly exported with the expected name
+export function EditModal({ isOpen, type, currentTitle, onSubmit, onClose, isLoading = false }: EditModalProps) {
+  const [title, setTitle] = useState(currentTitle);
+
+  useEffect(() => {
+    if (isOpen) {
+      setTitle(currentTitle);
+    }
+  }, [isOpen, currentTitle]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (title.trim()) {
+      onSubmit(title.trim());
+    }
+  };
+
+  const getColor = () => {
+    switch (type) {
+      case 'situation': return 'blue';
+      case 'before': return 'orange';
+      case 'after': return 'green';
+    }
+  };
+
+  const color = getColor();
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -48,34 +200,22 @@ export function SituationModal({ isOpen, isEditing, form, setForm, onSubmit, onC
         className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full"
       >
         <h2 className="text-xl font-bold text-gray-900 mb-4">
-          {isEditing ? 'Edit Situation' : 'New Situation'}
+          Edit {type === 'situation' ? 'Situation' : type === 'before' ? 'Before Item' : 'After Item'}
         </h2>
         
-        <form onSubmit={onSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Title
             </label>
             <input
               type="text"
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Enter situation title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-${color}-500 focus:border-transparent`}
+              placeholder={`Enter ${type} title`}
               required
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description (Optional)
-            </label>
-            <textarea
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Enter situation description"
-              rows={3}
+              disabled={isLoading}
             />
           </div>
           
@@ -84,14 +224,23 @@ export function SituationModal({ isOpen, isEditing, form, setForm, onSubmit, onC
               type="button"
               onClick={onClose}
               className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors"
+              disabled={isLoading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+              disabled={isLoading || !title.trim()}
+              className={`flex-1 bg-${color}-600 hover:bg-${color}-700 text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2`}
             >
-              {isEditing ? 'Update' : 'Create'}
+              {isLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Updating...
+                </>
+              ) : (
+                'Update'
+              )}
             </button>
           </div>
         </form>
@@ -100,132 +249,7 @@ export function SituationModal({ isOpen, isEditing, form, setForm, onSubmit, onC
   );
 }
 
-export function BeforeModal({ isOpen, isEditing, form, setForm, onSubmit, onClose }: BeforeModalProps) {
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full"
-      >
-        <h2 className="text-xl font-bold text-gray-900 mb-4">
-          {isEditing ? 'Edit Before Item' : 'New Before Item'}
-        </h2>
-        
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Title
-            </label>
-            <input
-              type="text"
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              placeholder="Enter before item title"
-              required
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description (Optional)
-            </label>
-            <textarea
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              placeholder="Enter before item description"
-              rows={3}
-            />
-          </div>
-          
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-            >
-              {isEditing ? 'Update' : 'Create'}
-            </button>
-          </div>
-        </form>
-      </motion.div>
-    </div>
-  );
-}
-
-export function AfterModal({ isOpen, isEditing, form, setForm, onSubmit, onClose }: AfterModalProps) {
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full"
-      >
-        <h2 className="text-xl font-bold text-gray-900 mb-4">
-          {isEditing ? 'Edit After Item' : 'New After Item'}
-        </h2>
-        
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Title
-            </label>
-            <input
-              type="text"
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              placeholder="Enter after item title"
-              required
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description (Optional)
-            </label>
-            <textarea
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              placeholder="Enter after item description"
-              rows={3}
-            />
-          </div>
-          
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-            >
-              {isEditing ? 'Update' : 'Create'}
-            </button>
-          </div>
-        </form>
-      </motion.div>
-    </div>
-  );
-}
-
+// DeleteModal component - properly exported with the expected name
 export function DeleteModal({ isOpen, type, title, onConfirm, onClose }: DeleteModalProps) {
   if (!isOpen) return null;
 
