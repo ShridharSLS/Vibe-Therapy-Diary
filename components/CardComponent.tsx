@@ -25,7 +25,7 @@ export interface CardRef {
   saveContent: () => void;
 }
 
-const CHARACTER_LIMIT = 1000;
+const CHARACTER_LIMIT = 2000;
 
 const CardComponent = forwardRef<CardRef, CardComponentProps>((
   { card, onUpdate, onLiveTextChange, onEditingStateChange }, 
@@ -361,10 +361,11 @@ const CardComponent = forwardRef<CardRef, CardComponentProps>((
                 modules={{
                   toolbar: [
                     ['bold', 'italic'],
-                    [{ 'list': 'bullet' }]
+                    [{ 'list': 'bullet' }],
+                    [{ 'indent': '-1' }, { 'indent': '+1' }]
                   ]
                 }}
-                formats={['bold', 'italic', 'list', 'bullet']}
+                formats={['bold', 'italic', 'list', 'bullet', 'indent']}
               />
             </div>
             <div className="flex items-center justify-between">
