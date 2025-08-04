@@ -21,6 +21,36 @@ export interface Card {
   updatedAt: Date;
 }
 
+// Situations Management Types
+export interface Situation {
+  id: string;
+  title: string;
+  description?: string;
+  order: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface BeforeItem {
+  id: string;
+  situationId: string;
+  title: string;
+  description?: string;
+  order: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface AfterItem {
+  id: string;
+  beforeItemId: string;
+  title: string;
+  description?: string;
+  order: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface AdminSession {
   isAuthenticated: boolean;
   passwordHash?: string;
