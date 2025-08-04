@@ -150,6 +150,40 @@ html {
   margin-bottom: 0.25rem;
 }
 
+/* ReactQuill indent support for nested lists */
+.ql-editor .ql-indent-1 {
+  padding-left: 3em;
+}
+
+.ql-editor .ql-indent-2 {
+  padding-left: 6em;
+}
+
+.ql-editor .ql-indent-3 {
+  padding-left: 9em;
+}
+
+.ql-editor .ql-indent-4 {
+  padding-left: 12em;
+}
+
+/* Display styles for saved content with indentation */
+.rich-text-content .ql-indent-1 {
+  padding-left: 3em;
+}
+
+.rich-text-content .ql-indent-2 {
+  padding-left: 6em;
+}
+
+.rich-text-content .ql-indent-3 {
+  padding-left: 9em;
+}
+
+.rich-text-content .ql-indent-4 {
+  padding-left: 12em;
+}
+
 .rich-text-content p {
   margin-bottom: 0.5rem;
 }

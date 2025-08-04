@@ -2,76 +2,86 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Edit3, Trash2, ChevronDown, ChevronRight, FileText, CheckCircle, ArrowLeft } from 'lucide-react';
+import { Plus, Edit3, Trash2, FileText, ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import { 
   getAllSituations, updateSituation, deleteSituation,
-  getBeforeItems, updateBeforeItem, deleteBeforeItem,
-  getAfterItems, updateAfterItem, deleteAfterItem,
-  createMultipleSituations, createMultipleBeforeItems, createMultipleAfterItems
+  saveBeforeAfterItemsFromContent, getBeforeAfterContentForSituation,
+  createMultipleSituations
 } from '@/lib/situationsDatabase';
-import { Situation, BeforeItem, AfterItem } from '@/lib/types';
+import { Situation } from '@/lib/types';
 import { BulkAddModal, EditModal, DeleteModal } from '@/components/SituationsModals';
+import { BeforeAfterModal } from '@/components/BeforeAfterModal';
+import { parseBulletListContent, validateBulletListContent } from '@/lib/beforeAfterParser';
 import toast from 'react-hot-toast';
 
-interface SituationWithItems extends Situation {
-  beforeItems: (BeforeItem & { afterItems: AfterItem[] })[];
+interface SituationWithContent extends Situation {
+  beforeAfterContent: string;
 }
 
 export default function SituationsPage() {
-  const [situations, setSituations] = useState<SituationWithItems[]>([]);
+  const [situations, setSituations] = useState<SituationWithContent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [expandedSituations, setExpandedSituations] = useState<Set<string>>(new Set());
-  const [expandedBeforeItems, setExpandedBeforeItems] = useState<Set<string>>(new Set());
+  const [collapsedSituations, setCollapsedSituations] = useState<Set<string>>(new Set());
   
   // Modal states
   const [bulkAddModal, setBulkAddModal] = useState<{
-    type: 'situation' | 'before' | 'after';
+    type: 'situation';
     title: string;
-    situationId?: string;
-    beforeItemId?: string;
   } | null>(null);
   const [editModal, setEditModal] = useState<{
-    type: 'situation' | 'before' | 'after';
+    type: 'situation';
     id: string;
     currentTitle: string;
   } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{
-    type: 'situation' | 'before' | 'after';
+    type: 'situation';
     id: string;
     title: string;
   } | null>(null);
+  const [beforeAfterModal, setBeforeAfterModal] = useState<{
+    situationId: string;
+    situationTitle: string;
+    initialContent?: string;
+  } | null>(null);
   
-  // Track deletion in progress
-  const [deletingItems, setDeletingItems] = useState<Set<string>>(new Set());
+
   
   // Loading states
   const [isBulkAdding, setIsBulkAdding] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isSavingBeforeAfter, setIsSavingBeforeAfter] = useState(false);
 
-  useEffect(() => {
-    loadSituations();
-  }, []);
+  // Toggle situation collapse/expand
+  const toggleSituationCollapse = (situationId: string) => {
+    setCollapsedSituations(prev => {
+      const newSet = new Set(Array.from(prev));
+      if (newSet.has(situationId)) {
+        newSet.delete(situationId);
+      } else {
+        newSet.add(situationId);
+      }
+      return newSet;
+    });
+  };
 
+  // Load all situations and their before/after content
   const loadSituations = async () => {
     try {
       setIsLoading(true);
-      const situationsData = await getAllSituations();
+      const allSituations = await getAllSituations();
       
-      const situationsWithItems: SituationWithItems[] = [];
+      // Load before/after content for each situation
+      const situationsWithContent: SituationWithContent[] = [];
       
-      for (const situation of situationsData) {
-        const beforeItems = await getBeforeItems(situation.id);
-        const beforeItemsWithAfter = [];
-        
-        for (const beforeItem of beforeItems) {
-          const afterItems = await getAfterItems(beforeItem.id);
-          beforeItemsWithAfter.push({ ...beforeItem, afterItems });
-        }
-        
-        situationsWithItems.push({ ...situation, beforeItems: beforeItemsWithAfter });
+      for (const situation of allSituations) {
+        const content = await getBeforeAfterContentForSituation(situation.id);
+        situationsWithContent.push({
+          ...situation,
+          beforeAfterContent: content
+        });
       }
       
-      setSituations(situationsWithItems);
+      setSituations(situationsWithContent);
     } catch (error) {
       console.error('Error loading situations:', error);
       toast.error('Failed to load situations');
@@ -80,462 +90,323 @@ export default function SituationsPage() {
     }
   };
 
-  const handleBulkAdd = async (items: string[]) => {
-    if (!bulkAddModal) return;
-    
-    setIsBulkAdding(true);
+  useEffect(() => {
+    loadSituations();
+  }, []);
+
+  // Handle bulk add situations
+  const handleBulkAddSubmit = async (items: string[]) => {
     try {
-      switch (bulkAddModal.type) {
-        case 'situation':
-          await createMultipleSituations(items);
-          toast.success(`Created ${items.length} situation${items.length !== 1 ? 's' : ''} successfully`);
-          break;
-        case 'before':
-          if (bulkAddModal.situationId) {
-            await createMultipleBeforeItems(bulkAddModal.situationId, items);
-            toast.success(`Created ${items.length} before item${items.length !== 1 ? 's' : ''} successfully`);
-          }
-          break;
-        case 'after':
-          if (bulkAddModal.beforeItemId) {
-            await createMultipleAfterItems(bulkAddModal.beforeItemId, items);
-            toast.success(`Created ${items.length} after item${items.length !== 1 ? 's' : ''} successfully`);
-          }
-          break;
-      }
+      setIsBulkAdding(true);
+      await createMultipleSituations(items);
+      toast.success(`Created ${items.length} situation${items.length !== 1 ? 's' : ''}`);
       setBulkAddModal(null);
-      loadSituations();
+      await loadSituations();
     } catch (error) {
-      toast.error(`Failed to create ${bulkAddModal.type} items`);
+      console.error('Error creating situations:', error);
+      toast.error('Failed to create situations');
     } finally {
       setIsBulkAdding(false);
     }
   };
 
-  const handleEdit = async (title: string) => {
+  // Handle edit situation
+  const handleEditSubmit = async (title: string) => {
     if (!editModal) return;
     
-    setIsEditing(true);
     try {
-      switch (editModal.type) {
-        case 'situation':
-          await updateSituation(editModal.id, { title });
-          break;
-        case 'before':
-          await updateBeforeItem(editModal.id, { title });
-          break;
-        case 'after':
-          await updateAfterItem(editModal.id, { title });
-          break;
-      }
+      setIsEditing(true);
+      await updateSituation(editModal.id, { title });
+      toast.success('Situation updated');
       setEditModal(null);
-      toast.success(`${editModal.type} updated successfully`);
-      loadSituations();
+      await loadSituations();
     } catch (error) {
-      toast.error(`Failed to update ${editModal.type}`);
+      console.error('Error updating situation:', error);
+      toast.error('Failed to update situation');
     } finally {
       setIsEditing(false);
     }
   };
 
-  const handleDelete = async () => {
+  // Handle delete situation
+  const handleDeleteConfirm = async () => {
     if (!deleteConfirm) return;
     
-    // Mark item as being deleted
-    setDeletingItems(prev => new Set(prev).add(deleteConfirm.id));
-    
-    // For optimistic UI updates
-    const itemType = deleteConfirm.type;
-    const itemId = deleteConfirm.id;
-    
-    // Apply optimistic UI update
-    if (itemType === 'situation') {
-      setSituations(prev => prev.filter(s => s.id !== itemId));
-    } else if (itemType === 'before') {
-      setSituations(prev => prev.map(situation => ({
-        ...situation,
-        beforeItems: situation.beforeItems.filter(item => item.id !== itemId)
-      })));
-    } else if (itemType === 'after') {
-      setSituations(prev => prev.map(situation => ({
-        ...situation,
-        beforeItems: situation.beforeItems.map(beforeItem => ({
-          ...beforeItem,
-          afterItems: beforeItem.afterItems.filter(item => item.id !== itemId)
-        }))
-      })));
-    }
-    
-    // Close the confirmation modal immediately
-    setDeleteConfirm(null);
+    const situationToDelete = deleteConfirm;
     
     try {
-      // Perform actual deletion in the background
-      switch (itemType) {
-        case 'situation':
-          await deleteSituation(itemId);
-          break;
-        case 'before':
-          await deleteBeforeItem(itemId);
-          break;
-        case 'after':
-          await deleteAfterItem(itemId);
-          break;
-      }
+      // Optimistic UI: Remove from state immediately
+      setSituations(prev => prev.filter(s => s.id !== situationToDelete.id));
+      setDeleteConfirm(null);
       
-      toast.success(`${itemType} deleted successfully`);
+      // Show success immediately
+      toast.success('Situation deleted');
       
-      // Remove from deleting set
-      setDeletingItems(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(itemId);
-        return newSet;
-      });
-      
-      // No need to reload everything - we've already updated the UI
-      // The next time the user refreshes, they'll get fresh data
+      // Delete from database in background
+      await deleteSituation(situationToDelete.id);
     } catch (error) {
-      toast.error(`Failed to delete ${itemType}`);
-      // Reload to restore accurate state on error
-      loadSituations();
+      console.error('Error deleting situation:', error);
+      toast.error('Failed to delete situation');
       
-      // Remove from deleting set
-      setDeletingItems(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(itemId);
-        return newSet;
-      });
+      // Revert optimistic update on error by reloading
+      await loadSituations();
     }
   };
 
-  const toggleSituationExpanded = (situationId: string) => {
-    const newExpanded = new Set(expandedSituations);
-    if (newExpanded.has(situationId)) {
-      newExpanded.delete(situationId);
-    } else {
-      newExpanded.add(situationId);
+  // Handle before/after items save
+  const handleBeforeAfterSubmit = async (content: string) => {
+    if (!beforeAfterModal) return;
+    
+    try {
+      setIsSavingBeforeAfter(true);
+      
+      // Validate content
+      const validation = validateBulletListContent(content);
+      if (!validation.isValid) {
+        toast.error(`Invalid format: ${validation.errors[0]}`);
+        return;
+      }
+      
+      // Parse content
+      const parsedData = parseBulletListContent(content);
+      
+      // Save to database
+      await saveBeforeAfterItemsFromContent(beforeAfterModal.situationId, parsedData);
+      
+      toast.success('Before & After items saved');
+      setBeforeAfterModal(null);
+      await loadSituations();
+    } catch (error) {
+      console.error('Error saving before/after items:', error);
+      toast.error('Failed to save before/after items');
+    } finally {
+      setIsSavingBeforeAfter(false);
     }
-    setExpandedSituations(newExpanded);
+  };
+
+  // Handle opening before/after modal for editing
+  const handleEditBeforeAfter = (situationId: string, situationTitle: string, existingContent?: string) => {
+    // Use existing content if available, otherwise default to '1. '
+    setBeforeAfterModal({
+      situationId,
+      situationTitle,
+      initialContent: existingContent || '1. '
+    });
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading situations...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => window.history.back()}
-              className="p-2 hover:bg-white/50 rounded-lg transition-colors"
-            >
-              <ArrowLeft size={24} className="text-gray-600" />
-            </button>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Situations Management</h1>
-              <p className="text-gray-600">Manage situations, before items, and after items</p>
-            </div>
-          </div>
-          
-          <button
-            onClick={() => setBulkAddModal({ type: 'situation', title: 'Add Situations' })}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
-          >
-            <Plus size={20} />
-            Add Situations
-          </button>
-        </div>
-
-        {/* Situations List */}
-        <div className="space-y-4">
-          {situations.length === 0 ? (
-            <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-              <FileText size={48} className="text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No situations yet</h3>
-              <p className="text-gray-600 mb-4">Create your first situation to get started</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-6xl mx-auto px-4 py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
               <button
-                onClick={() => setBulkAddModal({ type: 'situation', title: 'Add Situations' })}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                onClick={() => window.history.back()}
+                className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
               >
-                Add Situations
+                <ArrowLeft size={20} />
+                Back
               </button>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Situations Management</h1>
+                <p className="text-gray-600 mt-1">Manage situations and their before/after items</p>
+              </div>
             </div>
-          ) : (
-            situations.map((situation) => (
-              <div key={situation.id} className="bg-white rounded-xl shadow-sm overflow-hidden">
-                {/* Situation Header */}
+            <button
+              onClick={() => setBulkAddModal({ type: 'situation', title: 'Add Multiple Situations' })}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              <Plus size={20} />
+              Add Situations
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {situations.length === 0 ? (
+          <div className="text-center py-12">
+            <FileText size={48} className="mx-auto text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No situations yet</h3>
+            <p className="text-gray-600 mb-6">Get started by adding your first situation</p>
+            <button
+              onClick={() => setBulkAddModal({ type: 'situation', title: 'Add Multiple Situations' })}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
+            >
+              Add Situations
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {situations.map((situation) => (
+              <motion.div
+                key={situation.id}
+                layout
+                className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
+              >
+                {/* Situation Header - Shorter */}
                 <div className="p-4 border-b border-gray-100">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3 flex-1">
                       <button
-                        onClick={() => toggleSituationExpanded(situation.id)}
-                        className="p-1 hover:bg-gray-100 rounded transition-colors"
+                        onClick={() => toggleSituationCollapse(situation.id)}
+                        className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                        title={collapsedSituations.has(situation.id) ? 'Expand' : 'Collapse'}
                       >
-                        {expandedSituations.has(situation.id) ? (
-                          <ChevronDown size={20} className="text-gray-600" />
+                        {collapsedSituations.has(situation.id) ? (
+                          <ChevronDown size={20} />
                         ) : (
-                          <ChevronRight size={20} className="text-gray-600" />
+                          <ChevronUp size={20} />
                         )}
                       </button>
-                      
-                      <FileText size={20} className="text-blue-600" />
-                      
-                      <div 
-                        className="flex-1 cursor-pointer hover:bg-gray-50 rounded p-2 -m-2"
-                        onClick={() => setEditModal({ type: 'situation', id: situation.id, currentTitle: situation.title })}
-                      >
-                        <h3 className="font-medium text-gray-900">{situation.title}</h3>
+                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <FileText size={16} className="text-blue-600" />
                       </div>
+                      <h3 
+                        className="text-lg font-semibold text-gray-900 flex-1 cursor-pointer hover:text-blue-600 transition-colors"
+                        onClick={() => setEditModal({
+                          type: 'situation',
+                          id: situation.id,
+                          currentTitle: situation.title
+                        })}
+                        title="Click to edit situation title"
+                      >
+                        {situation.title}
+                      </h3>
                     </div>
-                    
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => setEditModal({ type: 'situation', id: situation.id, currentTitle: situation.title })}
-                        className="p-2 hover:bg-gray-100 rounded transition-colors"
+                        onClick={() => setEditModal({
+                          type: 'situation',
+                          id: situation.id,
+                          currentTitle: situation.title
+                        })}
+                        className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                        title="Edit situation"
                       >
-                        <Edit3 size={16} className="text-gray-600" />
+                        <Edit3 size={16} />
                       </button>
-                      
                       <button
                         onClick={() => setDeleteConfirm({
                           type: 'situation',
                           id: situation.id,
                           title: situation.title
                         })}
-                        disabled={deletingItems.has(situation.id)}
-                        className="p-2 hover:bg-red-100 rounded transition-colors relative"
+                        className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                        title="Delete situation"
                       >
-                        {deletingItems.has(situation.id) ? (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="w-3 h-3 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
-                          </div>
-                        ) : (
-                          <Trash2 size={16} className="text-red-600" />
-                        )}
-                      </button>
-                      
-                      <button
-                        onClick={() => setBulkAddModal({ 
-                          type: 'before', 
-                          title: 'Add Before Items', 
-                          situationId: situation.id 
-                        })}
-                        className="p-2 hover:bg-green-100 rounded transition-colors"
-                        title="Add Before Items"
-                      >
-                        <Plus size={16} className="text-green-600" />
+                        <Trash2 size={16} />
                       </button>
                     </div>
                   </div>
                 </div>
 
-                {/* Before Items */}
+                {/* Before/After Content - Collapsible */}
                 <AnimatePresence>
-                  {expandedSituations.has(situation.id) && (
+                  {!collapsedSituations.has(situation.id) && (
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
                       className="overflow-hidden"
                     >
-                      <div className="p-4 bg-gray-50">
-                        {situation.beforeItems.length === 0 ? (
-                          <div className="text-center py-4">
-                            <p className="text-gray-500 mb-2">No before items yet</p>
-                            <button
-                              onClick={() => setBulkAddModal({ 
-                                type: 'before', 
-                                title: 'Add Before Items', 
-                                situationId: situation.id 
-                              })}
-                              className="text-blue-600 hover:text-blue-700 font-medium"
-                            >
-                              Add before items
-                            </button>
+                      <div className="p-6">
+                        {situation.beforeAfterContent ? (
+                          <div
+                            onClick={() => handleEditBeforeAfter(situation.id, situation.title, situation.beforeAfterContent)}
+                            className="bg-gray-50 rounded-lg p-4 cursor-pointer hover:bg-gray-100 transition-colors border border-gray-200"
+                          >
+                            <div className="flex items-start justify-between mb-3">
+                              <h4 className="font-medium text-gray-900">Before & After Items</h4>
+                              <Edit3 size={16} className="text-gray-400" />
+                            </div>
+                            <div className="text-sm text-gray-700 font-mono whitespace-pre-wrap">
+                              {situation.beforeAfterContent}
+                            </div>
                           </div>
                         ) : (
-                          <div className="space-y-3">
-                            {situation.beforeItems.map((beforeItem) => (
-                              <div key={beforeItem.id} className="bg-white rounded-lg p-3">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-3 flex-1">
-                                    <div className="w-4 h-4 bg-orange-100 rounded flex items-center justify-center">
-                                      <div className="w-2 h-2 bg-orange-600 rounded"></div>
-                                    </div>
-                                    <div 
-                                      className="flex-1 cursor-pointer hover:bg-gray-50 rounded p-2 -m-2"
-                                      onClick={() => setEditModal({ 
-                                        type: 'before', 
-                                        id: beforeItem.id, 
-                                        currentTitle: beforeItem.title 
-                                      })}
-                                    >
-                                      <h4 className="font-medium text-gray-900">{beforeItem.title}</h4>
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="flex items-center gap-2">
-                                    <button
-                                      onClick={() => setEditModal({ 
-                                        type: 'before', 
-                                        id: beforeItem.id, 
-                                        currentTitle: beforeItem.title 
-                                      })}
-                                      className="p-1 hover:bg-gray-100 rounded transition-colors"
-                                    >
-                                      <Edit3 size={14} className="text-gray-600" />
-                                    </button>
-                                    
-                                    <button
-                                      onClick={() => setDeleteConfirm({
-                                        type: 'before',
-                                        id: beforeItem.id,
-                                        title: beforeItem.title
-                                      })}
-                                      disabled={deletingItems.has(beforeItem.id)}
-                                      className="p-1 hover:bg-red-100 rounded transition-colors relative"
-                                    >
-                                      {deletingItems.has(beforeItem.id) ? (
-                                        <div className="absolute inset-0 flex items-center justify-center">
-                                          <div className="w-2 h-2 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
-                                        </div>
-                                      ) : (
-                                        <Trash2 size={14} className="text-red-600" />
-                                      )}
-                                    </button>
-                                    
-                                    <button
-                                      onClick={() => setBulkAddModal({ 
-                                        type: 'after', 
-                                        title: 'Add After Items', 
-                                        beforeItemId: beforeItem.id 
-                                      })}
-                                      className="p-1 hover:bg-green-100 rounded transition-colors"
-                                      title="Add After Items"
-                                    >
-                                      <Plus size={14} className="text-green-600" />
-                                    </button>
-                                  </div>
-                                </div>
-
-                                {/* After Items */}
-                                {beforeItem.afterItems.length > 0 ? (
-                                  <div className="ml-6 mt-2 space-y-2">
-                                    {beforeItem.afterItems.map((afterItem) => (
-                                      <div key={afterItem.id} className="bg-green-50 rounded-lg p-2">
-                                        <div className="flex items-center justify-between">
-                                          <div className="flex items-center gap-2 flex-1">
-                                            <CheckCircle size={16} className="text-green-600" />
-                                            <div 
-                                              className="flex-1 cursor-pointer hover:bg-gray-50 rounded p-2 -m-2"
-                                              onClick={() => setEditModal({ 
-                                                type: 'after', 
-                                                id: afterItem.id, 
-                                                currentTitle: afterItem.title 
-                                              })}
-                                            >
-                                              <h5 className="font-medium text-gray-900 text-sm">{afterItem.title}</h5>
-                                            </div>
-                                          </div>
-                                          
-                                          <div className="flex items-center gap-1">
-                                            <button
-                                              onClick={() => setEditModal({ 
-                                                type: 'after', 
-                                                id: afterItem.id, 
-                                                currentTitle: afterItem.title 
-                                              })}
-                                              className="p-1 hover:bg-green-100 rounded transition-colors"
-                                            >
-                                              <Edit3 size={12} className="text-gray-600" />
-                                            </button>
-                                            
-                                            <button
-                                              onClick={() => setDeleteConfirm({
-                                                type: 'after',
-                                                id: afterItem.id,
-                                                title: afterItem.title
-                                              })}
-                                              disabled={deletingItems.has(afterItem.id)}
-                                              className="p-1 hover:bg-red-100 rounded transition-colors relative"
-                                            >
-                                              {deletingItems.has(afterItem.id) ? (
-                                                <div className="absolute inset-0 flex items-center justify-center">
-                                                  <div className="w-2 h-2 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
-                                                </div>
-                                              ) : (
-                                                <Trash2 size={12} className="text-red-600" />
-                                              )}
-                                            </button>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <div className="ml-6 mt-2">
-                                    <div className="text-center py-2">
-                                      <p className="text-gray-500 text-sm mb-2">No after items yet</p>
-                                      <button
-                                        onClick={() => setBulkAddModal({ 
-                                          type: 'after', 
-                                          title: 'Add After Items', 
-                                          beforeItemId: beforeItem.id 
-                                        })}
-                                        className="text-green-600 hover:text-green-700 font-medium text-sm"
-                                      >
-                                        Add first after item
-                                      </button>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
+                          <button
+                            onClick={() => setBeforeAfterModal({
+                              situationId: situation.id,
+                              situationTitle: situation.title,
+                              initialContent: '1. '
+                            })}
+                            className="w-full bg-gray-50 hover:bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center transition-colors"
+                          >
+                            <Plus size={24} className="mx-auto text-gray-400 mb-2" />
+                            <p className="text-gray-600 font-medium">Add Before & After Items</p>
+                            <p className="text-sm text-gray-500 mt-1">Click to add before and after items for this situation</p>
+                          </button>
                         )}
                       </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </div>
-            ))
-          )}
-        </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Modals */}
-      <BulkAddModal
-        isOpen={bulkAddModal !== null}
-        type={bulkAddModal?.type || 'situation'}
-        title={bulkAddModal?.title || ''}
-        onSubmit={handleBulkAdd}
-        onClose={() => setBulkAddModal(null)}
-        isLoading={isBulkAdding}
-      />
+      <AnimatePresence>
+        {bulkAddModal && (
+          <BulkAddModal
+            isOpen={true}
+            type={bulkAddModal.type}
+            title={bulkAddModal.title}
+            onSubmit={handleBulkAddSubmit}
+            onClose={() => setBulkAddModal(null)}
+            isLoading={isBulkAdding}
+          />
+        )}
 
-      <EditModal
-        isOpen={editModal !== null}
-        type={editModal?.type || 'situation'}
-        currentTitle={editModal?.currentTitle || ''}
-        onSubmit={handleEdit}
-        onClose={() => setEditModal(null)}
-        isLoading={isEditing}
-      />
+        {editModal && (
+          <EditModal
+            isOpen={true}
+            type={editModal.type}
+            currentTitle={editModal.currentTitle}
+            onSubmit={handleEditSubmit}
+            onClose={() => setEditModal(null)}
+            isLoading={isEditing}
+          />
+        )}
 
-      <DeleteModal
-        isOpen={deleteConfirm !== null}
-        type={deleteConfirm?.type || 'situation'}
-        title={deleteConfirm?.title || ''}
-        onConfirm={handleDelete}
-        onClose={() => setDeleteConfirm(null)}
-      />
+        {deleteConfirm && (
+          <DeleteModal
+            isOpen={true}
+            type={deleteConfirm.type}
+            title={deleteConfirm.title}
+            onConfirm={handleDeleteConfirm}
+            onClose={() => setDeleteConfirm(null)}
+          />
+        )}
+
+        {beforeAfterModal && (
+          <BeforeAfterModal
+            isOpen={true}
+            situationTitle={beforeAfterModal.situationTitle}
+            initialContent={beforeAfterModal.initialContent}
+            onSubmit={handleBeforeAfterSubmit}
+            onClose={() => setBeforeAfterModal(null)}
+            isLoading={isSavingBeforeAfter}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

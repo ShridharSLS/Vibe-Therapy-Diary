@@ -729,6 +729,23 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
                   </span>
                 </div>
                 
+                {/* Page Indicators */}
+                {cards.length > 1 && (
+                  <div className="mt-4 flex justify-center">
+                    <div className="flex gap-2 bg-white/80 backdrop-blur-sm rounded-full px-4 py-2">
+                      {cards.map((_, index) => (
+                        <button
+                          key={index}
+                          onClick={() => setCurrentIndex(index)}
+                          className={`w-2 h-2 rounded-full transition-colors ${
+                            index === currentIndex ? 'bg-blue-800' : 'bg-gray-300'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
                 {/* Situation Selector */}
                 <SituationSelector
                   isOpen={situationSelectorOpen}
@@ -759,22 +776,7 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
         </div>
       </div>
 
-      {/* Page Indicators */}
-      {cards.length > 1 && (
-        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2">
-          <div className="flex gap-2 bg-white/80 backdrop-blur-sm rounded-full px-4 py-2">
-            {cards.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentIndex(index)}
-                className={`w-2 h-2 rounded-full transition-colors ${
-                  index === currentIndex ? 'bg-blue-800' : 'bg-gray-300'
-                }`}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+
 
       {/* Grid View Modal */}
       <AnimatePresence>

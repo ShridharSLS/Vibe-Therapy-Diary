@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { Situation, BeforeItem, AfterItem } from './types';
+import { ParsedBeforeAfterData } from './beforeAfterParser';
 
 // Situation CRUD Operations
 export const createSituation = async (title: string): Promise<string> => {
@@ -436,5 +437,137 @@ export const createMultipleAfterItems = async (beforeItemId: string, titles: str
   } catch (error) {
     console.error('Error creating multiple after items:', error);
     throw new Error('Failed to create after items');
+  }
+};
+
+// Bulk create/update before and after items from parsed content
+export const saveBeforeAfterItemsFromContent = async (
+  situationId: string, 
+  parsedData: { beforeItems: Array<{ title: string; afterItems: string[] }> }
+): Promise<void> => {
+  try {
+    // First, delete all existing before and after items for this situation
+    await deleteAllBeforeAfterItemsForSituation(situationId);
+    
+    // Prepare all documents to be created
+    const beforePromises = [];
+    const afterPromises = [];
+    const now = Timestamp.now();
+    let beforeOrder = 1;
+    
+    for (const beforeData of parsedData.beforeItems) {
+      // Create before item
+      const beforeItemId = `before_${Date.now()}_${beforeOrder}`;
+      const beforeItemData = {
+        id: beforeItemId,
+        situationId,
+        title: beforeData.title.trim(),
+        order: beforeOrder,
+        createdAt: now,
+        updatedAt: now,
+      };
+      
+      beforePromises.push(addDoc(collection(db, 'beforeItems'), beforeItemData));
+      
+      // Create after items for this before item
+      let afterOrder = 1;
+      for (const afterTitle of beforeData.afterItems) {
+        const afterItemId = `after_${Date.now()}_${beforeOrder}_${afterOrder}`;
+        const afterItemData = {
+          id: afterItemId,
+          beforeItemId,
+          title: afterTitle.trim(),
+          order: afterOrder,
+          createdAt: now,
+          updatedAt: now,
+        };
+        
+        afterPromises.push(addDoc(collection(db, 'afterItems'), afterItemData));
+        afterOrder++;
+      }
+      
+      beforeOrder++;
+    }
+    
+    // Execute all operations in parallel
+    await Promise.all([...beforePromises, ...afterPromises]);
+  } catch (error) {
+    console.error('Error saving before/after items from content:', error);
+    throw new Error('Failed to save before/after items');
+  }
+};
+
+// Helper function to delete all before and after items for a situation
+const deleteAllBeforeAfterItemsForSituation = async (situationId: string): Promise<void> => {
+  try {
+    // Get all before items for this situation
+    const beforeItemsRef = collection(db, 'beforeItems');
+    const beforeQuery = query(beforeItemsRef, where('situationId', '==', situationId));
+    const beforeSnapshot = await getDocs(beforeQuery);
+    
+    // Delete all after items for each before item, then delete the before items
+    const deletePromises = [];
+    
+    for (const beforeDoc of beforeSnapshot.docs) {
+      const beforeItemId = beforeDoc.data().id;
+      
+      // Get and delete all after items for this before item
+      const afterItemsRef = collection(db, 'afterItems');
+      const afterQuery = query(afterItemsRef, where('beforeItemId', '==', beforeItemId));
+      const afterSnapshot = await getDocs(afterQuery);
+      
+      // Delete after items
+      for (const afterDoc of afterSnapshot.docs) {
+        deletePromises.push(deleteDoc(afterDoc.ref));
+      }
+      
+      // Delete before item
+      deletePromises.push(deleteDoc(beforeDoc.ref));
+    }
+    
+    await Promise.all(deletePromises);
+  } catch (error) {
+    console.error('Error deleting before/after items for situation:', error);
+    throw new Error('Failed to delete existing before/after items');
+  }
+};
+
+// Get all before and after items for a situation in a format suitable for content display
+export const getBeforeAfterContentForSituation = async (situationId: string): Promise<string> => {
+  try {
+    // Get all before items for this situation
+    const beforeItems = await getBeforeItems(situationId);
+    
+    // Get after items for each before item
+    const afterItemsMap = new Map<string, AfterItem[]>();
+    
+    for (const beforeItem of beforeItems) {
+      const afterItems = await getAfterItems(beforeItem.id);
+      afterItemsMap.set(beforeItem.id, afterItems);
+    }
+    
+    // Format as content
+    let content = '';
+    let beforeIndex = 1;
+    
+    for (const beforeItem of beforeItems) {
+      content += `${beforeIndex}. ${beforeItem.title}\n`;
+      
+      const afterItems = afterItemsMap.get(beforeItem.id) || [];
+      let afterIndex = 0;
+      
+      for (const afterItem of afterItems) {
+        const letter = String.fromCharCode(97 + afterIndex); // 97 = 'a'
+        content += `   ${letter}. ${afterItem.title}\n`;
+        afterIndex++;
+      }
+      
+      beforeIndex++;
+    }
+    
+    return content.trim();
+  } catch (error) {
+    console.error('Error getting before/after content for situation:', error);
+    throw new Error('Failed to get before/after content');
   }
 };
