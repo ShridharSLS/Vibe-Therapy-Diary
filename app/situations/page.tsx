@@ -94,18 +94,41 @@ export default function SituationsPage() {
     loadSituations();
   }, []);
 
-  // Handle bulk add situations
+  // Handle bulk add situations with optimistic UI
   const handleBulkAddSubmit = async (items: string[]) => {
     try {
       setIsBulkAdding(true);
-      await createMultipleSituations(items);
-      toast.success(`Created ${items.length} situation${items.length !== 1 ? 's' : ''}`);
+      
+      // Optimistic UI: Add situations to state immediately
+      const baseTimestamp = Date.now();
+      const newSituations = items
+        .filter(title => title.trim())
+        .map((title, i) => ({
+          id: `situation_${baseTimestamp}_${i}_${Math.random().toString(36).substr(2, 6)}`,
+          title: title.trim(),
+          order: baseTimestamp + i,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          beforeAfterContent: ''
+        }));
+      
+      // Update UI immediately
+      setSituations(prev => [...newSituations, ...prev]);
       setBulkAddModal(null);
-      await loadSituations();
+      setIsBulkAdding(false);
+      toast.success(`Created ${items.length} situation${items.length !== 1 ? 's' : ''}`);
+      
+      // Create in database in background
+      createMultipleSituations(items).catch((error) => {
+        // Revert optimistic update on error
+        console.error('Error creating situations:', error);
+        toast.error('Failed to create situations - reverting changes');
+        // Reload to get correct state
+        loadSituations();
+      });
     } catch (error) {
       console.error('Error creating situations:', error);
       toast.error('Failed to create situations');
-    } finally {
       setIsBulkAdding(false);
     }
   };

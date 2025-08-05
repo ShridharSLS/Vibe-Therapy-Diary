@@ -23,7 +23,8 @@ export const createDiary = async (
   gender: 'Male' | 'Female' | 'Other'
 ): Promise<string> => {
   try {
-    const diaryId = await generateUniqueDiaryId();
+    // Generate ID instantly (no database queries)
+    const diaryId = generateUniqueDiaryId();
     const diaryData = {
       id: diaryId,
       clientId: clientId.trim(),
@@ -41,6 +42,34 @@ export const createDiary = async (
     return diaryId;
   } catch (error) {
     console.error('Error creating diary:', error);
+    throw new Error('Failed to create diary');
+  }
+};
+
+// Create diary with pre-generated ID (for optimistic UI)
+export const createDiaryWithId = async (
+  diaryId: string,
+  clientId: string,
+  name: string,
+  gender: 'Male' | 'Female' | 'Other'
+): Promise<void> => {
+  try {
+    const diaryData = {
+      id: diaryId,
+      clientId: clientId.trim(),
+      name: name.trim(),
+      gender,
+      url: `/diary/${diaryId}`,
+      cardReadingCount: 0,
+      isLocked: false,
+      passwordHash: null,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    };
+
+    await addDoc(collection(db, 'diaries'), diaryData);
+  } catch (error) {
+    console.error('Error creating diary with ID:', error);
     throw new Error('Failed to create diary');
   }
 };

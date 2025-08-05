@@ -7,7 +7,13 @@ export const generateDiaryId = (): string => {
   return nanoid(8); // 8 character random string
 };
 
-// Check if diary ID is unique
+// Generate a unique diary ID using timestamp + nanoid (no database queries needed)
+export const generateUniqueDiaryId = (): string => {
+  // Timestamp ensures uniqueness across time, nanoid ensures uniqueness within same millisecond
+  return `diary_${Date.now()}_${nanoid(6)}`;
+};
+
+// Legacy function kept for backward compatibility (now unused)
 export const isDiaryIdUnique = async (diaryId: string): Promise<boolean> => {
   try {
     const diariesRef = collection(db, 'diaries');
@@ -18,19 +24,6 @@ export const isDiaryIdUnique = async (diaryId: string): Promise<boolean> => {
     console.error('Error checking diary ID uniqueness:', error);
     return false;
   }
-};
-
-// Generate a unique diary ID
-export const generateUniqueDiaryId = async (): Promise<string> => {
-  let diaryId = generateDiaryId();
-  let isUnique = await isDiaryIdUnique(diaryId);
-  
-  while (!isUnique) {
-    diaryId = generateDiaryId();
-    isUnique = await isDiaryIdUnique(diaryId);
-  }
-  
-  return diaryId;
 };
 
 // Format date for display

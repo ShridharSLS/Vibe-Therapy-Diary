@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, Copy, ArrowRight } from 'lucide-react';
-import { createDiary } from '@/lib/database';
+import { createDiary, createDiaryWithId } from '@/lib/database';
+import { generateUniqueDiaryId } from '@/lib/utils';
 import { isValidClientId, isValidName, copyToClipboard } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
@@ -37,25 +38,34 @@ export default function HomePage() {
     setIsLoading(true);
     
     try {
-      const diaryId = await createDiary(
-        formData.clientId,
-        formData.name,
-        formData.gender
-      );
-      
+      // Optimistic UI: Show success immediately with generated ID
+      const diaryId = generateUniqueDiaryId();
       const diaryUrl = `${window.location.origin}/diary/${diaryId}`;
       
+      // Update UI immediately for instant feedback
       setCreatedDiary({
         id: diaryId,
         url: diaryUrl,
         name: formData.name,
       });
-      
+      setIsLoading(false);
       toast.success('Therapy diary created successfully!');
+      
+      // Create diary in database in background using the same ID
+      createDiaryWithId(
+        diaryId,
+        formData.clientId,
+        formData.name,
+        formData.gender
+      ).catch((error: Error) => {
+        // Revert optimistic update on error
+        setCreatedDiary(null);
+        toast.error('Failed to create diary. Please try again.');
+        console.error('Error creating diary:', error);
+      });
     } catch (error) {
       toast.error('Failed to create diary. Please try again.');
       console.error('Error creating diary:', error);
-    } finally {
       setIsLoading(false);
     }
   };

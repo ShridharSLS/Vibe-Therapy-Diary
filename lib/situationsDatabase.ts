@@ -17,16 +17,13 @@ import { ParsedBeforeAfterData } from './beforeAfterParser';
 // Situation CRUD Operations
 export const createSituation = async (title: string): Promise<string> => {
   try {
-    // Get current max order
-    const situationsRef = collection(db, 'situations');
-    const snapshot = await getDocs(query(situationsRef, orderBy('order', 'desc')));
-    const maxOrder = snapshot.empty ? 0 : snapshot.docs[0].data().order;
-    
-    const situationId = `situation_${Date.now()}`;
+    // Use timestamp for ordering (no database query needed)
+    const timestamp = Date.now();
+    const situationId = `situation_${timestamp}_${Math.random().toString(36).substr(2, 9)}`;
     const situationData = {
       id: situationId,
       title: title.trim(),
-      order: maxOrder + 1,
+      order: timestamp, // Timestamp-based ordering
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     };
@@ -39,24 +36,22 @@ export const createSituation = async (title: string): Promise<string> => {
   }
 };
 
-// Bulk create situations
+// Bulk create situations - optimized for performance
 export const createMultipleSituations = async (titles: string[]): Promise<string[]> => {
   try {
-    const situationsRef = collection(db, 'situations');
-    const snapshot = await getDocs(query(situationsRef, orderBy('order', 'desc')));
-    let maxOrder = snapshot.empty ? 0 : snapshot.docs[0].data().order;
-    
     const createdIds: string[] = [];
     const batch = [];
+    const baseTimestamp = Date.now();
     
-    for (const title of titles) {
+    for (let i = 0; i < titles.length; i++) {
+      const title = titles[i];
       if (title.trim()) {
-        maxOrder += 1;
-        const situationId = `situation_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        // Use timestamp + index for ordering (no database query needed)
+        const situationId = `situation_${baseTimestamp}_${i}_${Math.random().toString(36).substr(2, 6)}`;
         const situationData = {
           id: situationId,
           title: title.trim(),
-          order: maxOrder,
+          order: baseTimestamp + i, // Timestamp-based ordering
           createdAt: Timestamp.now(),
           updatedAt: Timestamp.now(),
         };
@@ -66,6 +61,7 @@ export const createMultipleSituations = async (titles: string[]): Promise<string
       }
     }
     
+    // Execute all creates in parallel
     await Promise.all(batch);
     return createdIds;
   } catch (error) {
