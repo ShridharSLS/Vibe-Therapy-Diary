@@ -25,7 +25,7 @@ export interface CardRef {
   saveContent: () => void;
 }
 
-const CHARACTER_LIMIT = 2000;
+const CHARACTER_LIMIT = 3000;
 
 const CardComponent = forwardRef<CardRef, CardComponentProps>((
   { card, onUpdate, onLiveTextChange, onEditingStateChange }, 
