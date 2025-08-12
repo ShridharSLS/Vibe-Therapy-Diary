@@ -1,101 +1,51 @@
-'use client';
-
-import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { Metadata } from 'next';
 import { getDiary } from '@/lib/database';
-import { Diary } from '@/lib/types';
-import DiaryInterface from '@/components/DiaryInterface';
-import DiaryUnlockScreen from '@/components/DiaryUnlockScreen';
-import toast from 'react-hot-toast';
+import { generateDiaryMetadata } from '@/lib/metadata';
+import DiaryPageClient from '@/components/DiaryPageClient';
 
-export default function DiaryPage() {
-  const params = useParams();
-  const router = useRouter();
-  const diaryId = params.id as string;
+interface DiaryPageProps {
+  params: {
+    id: string;
+  };
+}
+
+/**
+ * Generates dynamic metadata for diary pages to improve Chrome history searchability
+ * This function runs on the server side and enables proper SEO and browser indexing
+ */
+export async function generateMetadata({ params }: DiaryPageProps): Promise<Metadata> {
+  try {
+    const diary = await getDiary(params.id);
+    return generateDiaryMetadata(diary);
+  } catch (error) {
+    console.error('Error generating metadata for diary:', params.id, error);
+    // Return fallback metadata to maintain functionality
+    return generateDiaryMetadata(null);
+  }
+}
+
+/**
+ * Server-side diary page component that handles metadata generation
+ * Delegates client-side functionality to DiaryPageClient component
+ * Maintains backward compatibility with existing URLs and functionality
+ */
+export default async function DiaryPage({ params }: DiaryPageProps) {
+  const diaryId = params.id;
   
-  const [diary, setDiary] = useState<Diary | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isUnlocked, setIsUnlocked] = useState(false);
-
-  useEffect(() => {
-    const loadDiary = async () => {
-      try {
-        const diaryData = await getDiary(diaryId);
-        if (!diaryData) {
-          toast.error('Diary not found');
-          router.push('/');
-          return;
-        }
-        setDiary(diaryData);
-        
-        // If diary is not locked, automatically unlock it
-        if (!diaryData.isLocked) {
-          setIsUnlocked(true);
-        }
-      } catch (error) {
-        console.error('Error loading diary:', error);
-        toast.error('Failed to load diary');
-        router.push('/');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (diaryId) {
-      loadDiary();
-    }
-  }, [diaryId, router]);
-
-  const handleUnlock = () => {
-    setIsUnlocked(true);
-    toast.success('Diary unlocked successfully');
-  };
-
-  const handleBack = () => {
-    router.push('/');
-  };
-
-
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-800"></div>
-      </div>
-    );
-  }
-
-  if (!diary) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Diary Not Found</h1>
-          <p className="text-gray-600 mb-6">The diary you're looking for doesn't exist.</p>
-          <button
-            onClick={() => router.push('/')}
-            className="bg-blue-800 hover:bg-blue-900 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-          >
-            Go Home
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // If diary is locked and not unlocked, show unlock screen
-  if (diary && diary.isLocked && !isUnlocked) {
-    return (
-      <DiaryUnlockScreen
-        diary={diary}
-        onUnlock={handleUnlock}
-        onBack={handleBack}
-      />
-    );
+  // Pre-fetch diary data on server side for better performance and SEO
+  // This also ensures metadata generation has access to diary data
+  let initialDiary = null;
+  try {
+    initialDiary = await getDiary(diaryId);
+  } catch (error) {
+    console.error('Error pre-fetching diary data:', error);
+    // Don't throw error here - let client component handle it for better UX
   }
 
   return (
-    <div className="min-h-screen">
-      <DiaryInterface diary={diary} />
-    </div>
+    <DiaryPageClient 
+      diaryId={diaryId} 
+      initialDiary={initialDiary}
+    />
   );
 }

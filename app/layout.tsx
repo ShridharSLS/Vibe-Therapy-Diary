@@ -6,7 +6,10 @@ import { Toaster } from 'react-hot-toast';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Before After - Therapy Diary',
+  title: {
+    default: 'Before After - Therapy Diary',
+    template: '%s | Before After'
+  },
   description: 'A collaborative therapy diary web app',
   viewport: 'width=device-width, initial-scale=1, maximum-scale=1',
   other: {

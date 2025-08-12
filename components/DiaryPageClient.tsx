@@ -1,0 +1,119 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { getDiary } from '@/lib/database';
+import { Diary } from '@/lib/types';
+import DiaryInterface from './DiaryInterface';
+import DiaryUnlockScreen from './DiaryUnlockScreen';
+import toast from 'react-hot-toast';
+
+interface DiaryPageClientProps {
+  diaryId: string;
+  initialDiary?: Diary | null;
+}
+
+/**
+ * Client-side component for diary page functionality
+ * Separated from server component to enable dynamic metadata generation
+ * Follows separation of concerns principle
+ */
+export default function DiaryPageClient({ diaryId, initialDiary }: DiaryPageClientProps) {
+  const router = useRouter();
+  const [diary, setDiary] = useState<Diary | null>(initialDiary || null);
+  const [isLoading, setIsLoading] = useState(!initialDiary);
+  const [isUnlocked, setIsUnlocked] = useState(false);
+
+  useEffect(() => {
+    // If we already have initial diary data, skip loading
+    if (initialDiary) {
+      setDiary(initialDiary);
+      setIsLoading(false);
+      
+      // If diary is not locked, automatically unlock it
+      if (!initialDiary.isLocked) {
+        setIsUnlocked(true);
+      }
+      return;
+    }
+
+    // Fallback: Load diary data if not provided (maintains backward compatibility)
+    const loadDiary = async () => {
+      try {
+        const diaryData = await getDiary(diaryId);
+        if (!diaryData) {
+          toast.error('Diary not found');
+          router.push('/');
+          return;
+        }
+        setDiary(diaryData);
+        
+        // If diary is not locked, automatically unlock it
+        if (!diaryData.isLocked) {
+          setIsUnlocked(true);
+        }
+      } catch (error) {
+        console.error('Error loading diary:', error);
+        toast.error('Failed to load diary');
+        router.push('/');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (diaryId) {
+      loadDiary();
+    }
+  }, [diaryId, router, initialDiary]);
+
+  const handleUnlock = () => {
+    setIsUnlocked(true);
+    toast.success('Diary unlocked successfully');
+  };
+
+  const handleBack = () => {
+    router.push('/');
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-800"></div>
+      </div>
+    );
+  }
+
+  if (!diary) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Diary Not Found</h1>
+          <p className="text-gray-600 mb-6">The diary you're looking for doesn't exist.</p>
+          <button
+            onClick={() => router.push('/')}
+            className="bg-blue-800 hover:bg-blue-900 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+          >
+            Go Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // If diary is locked and not unlocked, show unlock screen
+  if (diary && diary.isLocked && !isUnlocked) {
+    return (
+      <DiaryUnlockScreen
+        diary={diary}
+        onUnlock={handleUnlock}
+        onBack={handleBack}
+      />
+    );
+  }
+
+  return (
+    <div className="min-h-screen">
+      <DiaryInterface diary={diary} />
+    </div>
+  );
+}
