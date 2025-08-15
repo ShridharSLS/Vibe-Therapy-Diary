@@ -188,6 +188,23 @@ html {
   margin-bottom: 0.5rem;
 }
 
+/* Nested list styling for proper sub-bullets */
+.rich-text-content ol ol {
+  list-style-type: lower-alpha; /* a, b, c for nested ordered lists */
+}
+
+.rich-text-content ol ol ol {
+  list-style-type: lower-roman; /* i, ii, iii for third level */
+}
+
+.rich-text-content ul ul {
+  list-style-type: circle; /* hollow circles for nested unordered lists */
+}
+
+.rich-text-content ul ul ul {
+  list-style-type: square; /* squares for third level */
+}
+
 .rich-text-content strong,
 .rich-text-content b {
   font-weight: 600;

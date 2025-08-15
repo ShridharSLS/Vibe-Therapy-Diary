@@ -309,24 +309,26 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
   }) => {
     if (!currentCard) return;
 
-    // Format the situation content as HTML ordered list with nested unordered lists
+    // Format the situation content as HTML ordered list with nested ordered lists
+    // Using the same structure that ReactQuill creates for proper sanitization
     let situationContent = '<ol>';
     
     data.beforeItems.forEach((beforeItem, beforeIndex) => {
       // Add numbered list item for before item
       situationContent += `<li>${beforeItem}`;
       
-      // Find and add nested unordered list for corresponding after items
+      // Find and add nested ordered list for corresponding after items
       const relatedAfterItems = data.afterItems.filter(afterItem => 
         afterItem.beforeItemTitle === beforeItem
       );
       
       if (relatedAfterItems.length > 0) {
-        situationContent += '<ul>';
+        // Use nested ordered list (ol) for proper letter formatting (a, b, c)
+        situationContent += '<ol>';
         relatedAfterItems.forEach((afterItem) => {
           situationContent += `<li>${afterItem.title}</li>`;
         });
-        situationContent += '</ul>';
+        situationContent += '</ol>';
       }
       
       situationContent += '</li>';
@@ -334,14 +336,17 @@ export default function DiaryInterface({ diary: initialDiary }: DiaryInterfacePr
     
     situationContent += '</ol>';
 
+    // Apply the same sanitization logic used by normal card editing
+    const sanitizedContent = sanitizeHtml(situationContent);
+
     // Append to the existing card title and body instead of overwriting
     const newTopic = currentCard.topic 
       ? `${currentCard.topic} - ${data.situation}` 
       : data.situation;
       
     const newBodyText = currentCard.bodyText 
-      ? `${currentCard.bodyText}\n\n${situationContent.trim()}` 
-      : situationContent.trim();
+      ? `${currentCard.bodyText}\n\n${sanitizedContent}` 
+      : sanitizedContent;
 
     // Update the card with appended situation title and body
     handleCardUpdate(currentCard.id, {

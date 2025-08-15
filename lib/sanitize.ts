@@ -3,8 +3,72 @@
  * Pure JavaScript implementation with no external dependencies
  */
 
-// Allowed HTML tags for rich text editor
+// Allowed HTML tags for rich text editor - including nested list support
 const ALLOWED_TAGS = ['p', 'br', 'b', 'i', 'strong', 'em', 'u', 'ul', 'ol', 'li'];
+
+// Helper function to convert ReactQuill's flat structure to proper nested lists
+const convertToNestedLists = (html: string): string => {
+  if (typeof window === 'undefined') return html; // Skip on server-side
+  
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  
+  // Process all lists in the document
+  const lists = doc.querySelectorAll('ol, ul');
+  
+  lists.forEach(list => {
+    const items = Array.from(list.children).filter(child => child.tagName === 'LI');
+    const processedItems: Element[] = [];
+    
+    items.forEach(li => {
+      const className = li.getAttribute('class') || '';
+      const indentMatch = className.match(/ql-indent-(\d+)/);
+      
+      if (indentMatch) {
+        const indentLevel = parseInt(indentMatch[1]);
+        
+        // Find the appropriate parent item
+        let parentItem = null;
+        for (let i = processedItems.length - 1; i >= 0; i--) {
+          const prevItem = processedItems[i];
+          const prevClassName = prevItem.getAttribute('class') || '';
+          const prevIndentMatch = prevClassName.match(/ql-indent-(\d+)/);
+          const prevIndentLevel = prevIndentMatch ? parseInt(prevIndentMatch[1]) : 0;
+          
+          if (prevIndentLevel < indentLevel) {
+            parentItem = prevItem;
+            break;
+          }
+        }
+        
+        if (parentItem) {
+          // Create or find nested list in the parent item
+          let nestedList = parentItem.querySelector('ol, ul');
+          if (!nestedList) {
+            // For nested lists, use 'ol' to get letter numbering (a, b, c)
+            nestedList = doc.createElement('ol');
+            parentItem.appendChild(nestedList);
+          }
+          
+          // Remove indent class since it's now properly nested
+          li.removeAttribute('class');
+          if (li.getAttribute('class') === '') {
+            li.removeAttribute('class');
+          }
+          
+          // Move the item to the nested list
+          nestedList.appendChild(li);
+        } else {
+          processedItems.push(li);
+        }
+      } else {
+        processedItems.push(li);
+      }
+    });
+  });
+  
+  return doc.body.innerHTML;
+};
 
 // Simple HTML tag stripping regex
 const stripHtmlRegex = /<\/?[^>]+(>|$)/g;
@@ -19,7 +83,9 @@ export const sanitizeHtml = (html: string): string => {
   
   // Client-side: Use DOM for better sanitization
   if (typeof window !== 'undefined') {
-    const doc = new DOMParser().parseFromString(html, 'text/html');
+    // First convert flat indented lists to proper nested structure
+    const nestedHtml = convertToNestedLists(html);
+    const doc = new DOMParser().parseFromString(nestedHtml, 'text/html');
     const container = doc.createElement('div');
     
     // Extract and sanitize content from the parsed HTML
@@ -36,6 +102,29 @@ export const sanitizeHtml = (html: string): string => {
         // Only allow specific tags
         if (ALLOWED_TAGS.includes(tagName)) {
           const newEl = doc.createElement(tagName);
+          
+          // Preserve all necessary attributes for nested lists
+          const className = el.getAttribute('class');
+          if (className) {
+            const allowedClasses = className.split(' ').filter(cls => 
+              cls.startsWith('ql-indent-') || cls.startsWith('ql-list-')
+            );
+            if (allowedClasses.length > 0) {
+              newEl.setAttribute('class', allowedClasses.join(' '));
+            }
+          }
+          
+          // Preserve data-list attribute for list types (bullet, ordered, etc.)
+          const dataList = el.getAttribute('data-list');
+          if (dataList && (tagName === 'li')) {
+            newEl.setAttribute('data-list', dataList);
+          }
+          
+          // Preserve data-checked for checkboxes if needed
+          const dataChecked = el.getAttribute('data-checked');
+          if (dataChecked && (tagName === 'li')) {
+            newEl.setAttribute('data-checked', dataChecked);
+          }
           
           // Process child nodes recursively
           Array.from(el.childNodes).forEach(child => {
