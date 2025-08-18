@@ -8,7 +8,8 @@ import {
   query, 
   where, 
   orderBy, 
-  Timestamp 
+  Timestamp,
+  writeBatch 
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { Situation, BeforeItem, AfterItem } from './types';
@@ -16,10 +17,13 @@ import { ParsedBeforeAfterData } from './beforeAfterParser';
 
 // Situation CRUD Operations
 export const createSituation = async (title: string): Promise<string> => {
+  console.log('🚨 SITUATION CREATION: createSituation called with title:', title);
+  console.trace('🚨 SITUATION CREATION: Call stack');
   try {
     // Use timestamp for ordering (no database query needed)
     const timestamp = Date.now();
     const situationId = `situation_${timestamp}_${Math.random().toString(36).substr(2, 9)}`;
+    console.log('🚨 SITUATION CREATION: Generated ID:', situationId);
     const situationData = {
       id: situationId,
       title: title.trim(),
@@ -29,6 +33,7 @@ export const createSituation = async (title: string): Promise<string> => {
     };
 
     await addDoc(collection(db, 'situations'), situationData);
+    console.log('🚨 SITUATION CREATION: Successfully created situation:', situationId);
     return situationId;
   } catch (error) {
     console.error('Error creating situation:', error);
@@ -36,37 +41,64 @@ export const createSituation = async (title: string): Promise<string> => {
   }
 };
 
-// Bulk create situations - optimized for performance
-export const createMultipleSituations = async (titles: string[]): Promise<string[]> => {
+// Clean up corrupted situations with undefined IDs
+export const cleanupCorruptedSituations = async (): Promise<void> => {
   try {
-    const createdIds: string[] = [];
-    const batch = [];
-    const baseTimestamp = Date.now();
+    const situationsRef = collection(db, 'situations');
+    const snapshot = await getDocs(situationsRef);
     
-    for (let i = 0; i < titles.length; i++) {
-      const title = titles[i];
-      if (title.trim()) {
-        // Use timestamp + index for ordering (no database query needed)
-        const situationId = `situation_${baseTimestamp}_${i}_${Math.random().toString(36).substr(2, 6)}`;
-        const situationData = {
-          id: situationId,
-          title: title.trim(),
-          order: baseTimestamp + i, // Timestamp-based ordering
-          createdAt: Timestamp.now(),
-          updatedAt: Timestamp.now(),
-        };
-        
-        batch.push(addDoc(collection(db, 'situations'), situationData));
-        createdIds.push(situationId);
+    const batch = writeBatch(db);
+    let cleanupCount = 0;
+    
+    snapshot.docs.forEach(doc => {
+      const data = doc.data();
+      if (!data.id || data.id === 'undefined' || typeof data.id !== 'string') {
+        console.log('🧹 CLEANUP: Removing corrupted situation:', doc.id, data);
+        batch.delete(doc.ref);
+        cleanupCount++;
       }
-    }
+    });
     
-    // Execute all creates in parallel
-    await Promise.all(batch);
-    return createdIds;
+    if (cleanupCount > 0) {
+      await batch.commit();
+      console.log(`✅ CLEANUP: Removed ${cleanupCount} corrupted situations`);
+    } else {
+      console.log('✅ CLEANUP: No corrupted situations found');
+    }
   } catch (error) {
-    console.error('Error creating multiple situations:', error);
-    throw new Error('Failed to create situations');
+    console.error('❌ CLEANUP: Error cleaning up corrupted situations:', error);
+  }
+};
+
+// Bulk create situations - optimized for performance
+export const createMultipleSituations = async (titles: string[]): Promise<Situation[]> => {
+  console.log('✅ DATABASE: createMultipleSituations called with titles:', titles);
+  const batch = writeBatch(db);
+  const newSituations: Situation[] = [];
+  const baseTimestamp = Date.now();
+
+  titles.forEach((title, index) => {
+    if (title.trim()) {
+      const situationRef = doc(collection(db, 'situations'));
+      const newSituationData = {
+        id: situationRef.id,  // CRITICAL: Save the ID to the document
+        title: title.trim(),
+        order: baseTimestamp + index,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      batch.set(situationRef, newSituationData);
+      newSituations.push({ ...newSituationData, id: situationRef.id });
+    }
+  });
+
+  try {
+    await batch.commit();
+    console.log(`✅ DATABASE: Batch committed, created ${newSituations.length} situations.`);
+    return newSituations;
+  } catch (error) {
+    console.error('❌ DATABASE: Error committing batch:', error);
+    throw new Error('Failed to create situations in database.');
   }
 };
 
@@ -74,12 +106,15 @@ export const updateSituation = async (
   situationId: string, 
   updates: { title?: string }
 ): Promise<void> => {
+  console.log('🔍 UPDATE: updateSituation called for ID:', situationId, 'updates:', updates);
+  console.trace('🔍 UPDATE: Call stack');
   try {
     const situationsRef = collection(db, 'situations');
     const q = query(situationsRef, where('id', '==', situationId));
     const snapshot = await getDocs(q);
     
     if (!snapshot.empty) {
+      console.log('🔍 UPDATE: Found situation to update, doc ID:', snapshot.docs[0].id);
       const docRef = snapshot.docs[0].ref;
       const updateData: any = {
         updatedAt: Timestamp.now(),
@@ -89,30 +124,63 @@ export const updateSituation = async (
         updateData.title = updates.title.trim();
       }
       
+      console.log('🔍 UPDATE: Updating with data:', updateData);
       await updateDoc(docRef, updateData);
+      console.log('🔍 UPDATE: Successfully updated situation:', situationId);
+    } else {
+      console.log('🔍 UPDATE: No situation found with ID:', situationId);
     }
   } catch (error) {
-    console.error('Error updating situation:', error);
+    console.error('❌ Error updating situation:', error);
     throw new Error('Failed to update situation');
   }
 };
 
 export const deleteSituation = async (situationId: string): Promise<void> => {
   try {
-    // First delete all related before items and their after items
-    const beforeItems = await getBeforeItems(situationId);
-    for (const beforeItem of beforeItems) {
-      await deleteBeforeItem(beforeItem.id);
+    const batch = writeBatch(db);
+    
+    // Get all related data in parallel
+    const [beforeItems, situationDocs] = await Promise.all([
+      getBeforeItems(situationId),
+      getDocs(query(collection(db, 'situations'), where('id', '==', situationId)))
+    ]);
+    
+    // Get all after items for all before items in parallel
+    const afterItemsPromises = beforeItems.map(beforeItem => getAfterItems(beforeItem.id));
+    const allAfterItems = await Promise.all(afterItemsPromises);
+    
+    // Get document references for all after items
+    const afterItemDocPromises = allAfterItems.flat().map(async afterItem => {
+      const afterItemsRef = collection(db, 'afterItems');
+      const afterItemQuery = query(afterItemsRef, where('id', '==', afterItem.id));
+      const snapshot = await getDocs(afterItemQuery);
+      return snapshot.empty ? null : snapshot.docs[0].ref;
+    });
+    
+    const afterItemRefs = (await Promise.all(afterItemDocPromises)).filter(ref => ref !== null);
+    
+    // Get document references for all before items
+    const beforeItemDocPromises = beforeItems.map(async beforeItem => {
+      const beforeItemsRef = collection(db, 'beforeItems');
+      const beforeItemQuery = query(beforeItemsRef, where('id', '==', beforeItem.id));
+      const snapshot = await getDocs(beforeItemQuery);
+      return snapshot.empty ? null : snapshot.docs[0].ref;
+    });
+    
+    const beforeItemRefs = (await Promise.all(beforeItemDocPromises)).filter(ref => ref !== null);
+    
+    // Add all document references to batch delete
+    afterItemRefs.forEach(ref => batch.delete(ref));
+    beforeItemRefs.forEach(ref => batch.delete(ref));
+    
+    // Add situation to batch delete
+    if (!situationDocs.empty) {
+      batch.delete(situationDocs.docs[0].ref);
     }
     
-    // Then delete the situation
-    const situationsRef = collection(db, 'situations');
-    const q = query(situationsRef, where('id', '==', situationId));
-    const snapshot = await getDocs(q);
-    
-    if (!snapshot.empty) {
-      await deleteDoc(snapshot.docs[0].ref);
-    }
+    // Execute all deletes in a single atomic batch operation
+    await batch.commit();
   } catch (error) {
     console.error('Error deleting situation:', error);
     throw new Error('Failed to delete situation');
@@ -120,23 +188,29 @@ export const deleteSituation = async (situationId: string): Promise<void> => {
 };
 
 export const getAllSituations = async (): Promise<Situation[]> => {
+  console.log('🔍 DATABASE: getAllSituations called');
   try {
     const situationsRef = collection(db, 'situations');
     const q = query(situationsRef, orderBy('order', 'asc'));
     const snapshot = await getDocs(q);
     
-    return snapshot.docs.map(doc => {
+    const situations = snapshot.docs.map(doc => {
       const data = doc.data();
-      return {
+      const situation = {
         id: data.id,
         title: data.title,
         order: data.order,
         createdAt: data.createdAt.toDate(),
         updatedAt: data.updatedAt.toDate(),
       };
+      console.log('🔍 DATABASE: Found situation in DB:', situation.id, 'title:', situation.title);
+      return situation;
     });
+    
+    console.log('🔍 DATABASE: getAllSituations returning', situations.length, 'situations');
+    return situations;
   } catch (error) {
-    console.error('Error getting situations:', error);
+    console.error('❌ Error getting situations:', error);
     return [];
   }
 };
@@ -288,7 +362,7 @@ export const getBeforeItems = async (situationId: string): Promise<BeforeItem[]>
     });
   } catch (error) {
     console.error('Error getting before items:', error);
-    return [];
+    throw new Error('Failed to get before items');
   }
 };
 
@@ -441,19 +515,51 @@ export const saveBeforeAfterItemsFromContent = async (
   situationId: string, 
   parsedData: { beforeItems: Array<{ title: string; afterItems: string[] }> }
 ): Promise<void> => {
+  console.log('🔄 Starting saveBeforeAfterItemsFromContent for situation:', situationId);
+  console.log('📝 Parsed data:', parsedData);
+  
   try {
-    // First, delete all existing before and after items for this situation
-    await deleteAllBeforeAfterItemsForSituation(situationId);
+    // Step 1: Get existing items
+    console.log('📋 Getting existing items...');
+    const [beforeItems, beforeItemsSnapshot] = await Promise.all([
+      getBeforeItems(situationId),
+      getDocs(query(collection(db, 'beforeItems'), where('situationId', '==', situationId)))
+    ]);
     
-    // Prepare all documents to be created
-    const beforePromises = [];
-    const afterPromises = [];
+    console.log('📋 Found existing before items:', beforeItems.length);
+    
+    // Step 2: Delete existing items if any
+    if (beforeItems.length > 0) {
+      console.log('🗑️ Deleting existing items...');
+      const batch = writeBatch(db);
+      
+      // Get all after items for existing before items
+      const afterItemsPromises = beforeItems.map(beforeItem => 
+        getDocs(query(collection(db, 'afterItems'), where('beforeItemId', '==', beforeItem.id)))
+      );
+      const afterItemsSnapshots = await Promise.all(afterItemsPromises);
+      
+      // Add all existing items to batch delete
+      beforeItemsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+      afterItemsSnapshots.forEach(snapshot => {
+        snapshot.docs.forEach(doc => batch.delete(doc.ref));
+      });
+      
+      await batch.commit();
+      console.log('✅ Deleted existing items');
+    }
+    
+    // Step 3: Create new items
+    console.log('➕ Creating new items...');
     const now = Timestamp.now();
     let beforeOrder = 1;
     
+    const beforePromises = [];
+    const afterPromises = [];
+    
     for (const beforeData of parsedData.beforeItems) {
       // Create before item
-      const beforeItemId = `before_${Date.now()}_${beforeOrder}`;
+      const beforeItemId = `before_${Date.now()}_${beforeOrder}_${Math.random().toString(36).substr(2, 6)}`;
       const beforeItemData = {
         id: beforeItemId,
         situationId,
@@ -463,12 +569,13 @@ export const saveBeforeAfterItemsFromContent = async (
         updatedAt: now,
       };
       
+      console.log('📝 Creating before item:', beforeItemData);
       beforePromises.push(addDoc(collection(db, 'beforeItems'), beforeItemData));
       
       // Create after items for this before item
       let afterOrder = 1;
       for (const afterTitle of beforeData.afterItems) {
-        const afterItemId = `after_${Date.now()}_${beforeOrder}_${afterOrder}`;
+        const afterItemId = `after_${Date.now()}_${beforeOrder}_${afterOrder}_${Math.random().toString(36).substr(2, 6)}`;
         const afterItemData = {
           id: afterItemId,
           beforeItemId,
@@ -478,6 +585,7 @@ export const saveBeforeAfterItemsFromContent = async (
           updatedAt: now,
         };
         
+        console.log('📝 Creating after item:', afterItemData);
         afterPromises.push(addDoc(collection(db, 'afterItems'), afterItemData));
         afterOrder++;
       }
@@ -485,10 +593,17 @@ export const saveBeforeAfterItemsFromContent = async (
       beforeOrder++;
     }
     
-    // Execute all operations in parallel
-    await Promise.all([...beforePromises, ...afterPromises]);
+    // Execute all creates
+    const results = await Promise.all([...beforePromises, ...afterPromises]);
+    console.log('✅ Created items successfully:', results.length);
+    
+    // Step 4: Verify the save worked
+    console.log('🔍 Verifying save...');
+    const verifyBeforeItems = await getBeforeItems(situationId);
+    console.log('✅ Verification: Found', verifyBeforeItems.length, 'before items after save');
+    
   } catch (error) {
-    console.error('Error saving before/after items from content:', error);
+    console.error('❌ Error saving before/after items from content:', error);
     throw new Error('Failed to save before/after items');
   }
 };

@@ -28,6 +28,7 @@ interface DeleteModalProps {
   title: string;
   onConfirm: () => void;
   onClose: () => void;
+  isLoading?: boolean;
 }
 
 // BulkAddModal component - properly exported with the expected name
@@ -250,7 +251,7 @@ export function EditModal({ isOpen, type, currentTitle, onSubmit, onClose, isLoa
 }
 
 // DeleteModal component - properly exported with the expected name
-export function DeleteModal({ isOpen, type, title, onConfirm, onClose }: DeleteModalProps) {
+export function DeleteModal({ isOpen, type, title, onConfirm, onClose, isLoading = false }: DeleteModalProps) {
   if (!isOpen) return null;
 
   return (
@@ -274,15 +275,24 @@ export function DeleteModal({ isOpen, type, title, onConfirm, onClose }: DeleteM
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors"
+            disabled={isLoading}
+            className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+            disabled={isLoading}
+            className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
-            Delete
+            {isLoading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Deleting...
+              </>
+            ) : (
+              'Delete'
+            )}
           </button>
         </div>
       </motion.div>

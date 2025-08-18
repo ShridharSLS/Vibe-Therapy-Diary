@@ -169,7 +169,7 @@ export const BeforeAfterModal = ({
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col"
+        className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] min-h-[400px] flex flex-col"
       >
         <div className="p-6 border-b border-gray-200 flex items-center justify-between">
           <div>
@@ -189,9 +189,9 @@ export const BeforeAfterModal = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1">
-          <div className="p-6 flex-1">
-            <div className="mb-4">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="p-6 flex-1 flex flex-col min-h-0 overflow-hidden">
+            <div className="mb-4 flex-shrink-0">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Enter before items (numbered) and after items (indented with letters):
               </label>
@@ -207,7 +207,7 @@ export const BeforeAfterModal = ({
               value={content}
               onChange={(e) => setContent(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="w-full h-64 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none font-mono text-sm"
+              className="w-full flex-1 min-h-[200px] max-h-[400px] px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none font-mono text-sm"
               placeholder="1. First before item&#10;   a. First after item&#10;   b. Second after item&#10;2. Second before item&#10;   a. Another after item"
               disabled={isLoading}
             />

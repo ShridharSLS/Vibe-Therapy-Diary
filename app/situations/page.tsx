@@ -4,14 +4,19 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Edit3, Trash2, FileText, ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import { 
-  getAllSituations, updateSituation, deleteSituation,
-  saveBeforeAfterItemsFromContent, getBeforeAfterContentForSituation,
-  createMultipleSituations
+  getAllSituations, 
+  createMultipleSituations, 
+  updateSituation, 
+  deleteSituation,
+  saveBeforeAfterItemsFromContent,
+  cleanupCorruptedSituations,
+  getBeforeAfterContentForSituation
 } from '@/lib/situationsDatabase';
+import { parseBulletListContent } from '@/lib/beforeAfterParser';
 import { Situation } from '@/lib/types';
 import { BulkAddModal, EditModal, DeleteModal } from '@/components/SituationsModals';
 import { BeforeAfterModal } from '@/components/BeforeAfterModal';
-import { parseBulletListContent, validateBulletListContent } from '@/lib/beforeAfterParser';
+import { validateBulletListContent } from '@/lib/beforeAfterParser';
 import toast from 'react-hot-toast';
 
 interface SituationWithContent extends Situation {
@@ -50,6 +55,9 @@ export default function SituationsPage() {
   const [isBulkAdding, setIsBulkAdding] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSavingBeforeAfter, setIsSavingBeforeAfter] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeletingSituation, setIsDeletingSituation] = useState(false);
+  const [isAnyModalSubmitting, setIsAnyModalSubmitting] = useState(false);
 
   // Toggle situation collapse/expand
   const toggleSituationCollapse = (situationId: string) => {
@@ -66,24 +74,30 @@ export default function SituationsPage() {
 
   // Load all situations and their before/after content
   const loadSituations = async () => {
+    console.log('🔍 RELOAD START: loadSituations called');
     try {
       setIsLoading(true);
       const allSituations = await getAllSituations();
+      console.log('🔍 RELOAD: Found situations:', allSituations.map(s => ({ id: s.id, title: s.title })));
       
       // Load before/after content for each situation
       const situationsWithContent: SituationWithContent[] = [];
       
       for (const situation of allSituations) {
+        console.log('🔍 RELOAD: Loading content for situation:', situation.id, 'title:', situation.title);
         const content = await getBeforeAfterContentForSituation(situation.id);
+        console.log('🔍 RELOAD: Content loaded for', situation.id, ':', content.length, 'characters');
         situationsWithContent.push({
           ...situation,
           beforeAfterContent: content
         });
       }
       
+      console.log('🔍 RELOAD: Setting state with situations:', situationsWithContent.map(s => ({ id: s.id, title: s.title, contentLength: s.beforeAfterContent.length })));
       setSituations(situationsWithContent);
+      console.log('🔍 RELOAD COMPLETE: State updated successfully');
     } catch (error) {
-      console.error('Error loading situations:', error);
+      console.error('❌ Error loading situations:', error);
       toast.error('Failed to load situations');
     } finally {
       setIsLoading(false);
@@ -91,124 +105,161 @@ export default function SituationsPage() {
   };
 
   useEffect(() => {
-    loadSituations();
+    // Clean up any corrupted data first, then load situations
+    const initializeData = async () => {
+      await cleanupCorruptedSituations();
+      await loadSituations();
+    };
+    initializeData();
   }, []);
 
-  // Handle bulk add situations with optimistic UI
+  // Handle bulk add situations with database-first approach
   const handleBulkAddSubmit = async (items: string[]) => {
+    if (isAnyModalSubmitting) return;
+
+    setIsAnyModalSubmitting(true);
+    setIsBulkAdding(true);
+
     try {
-      setIsBulkAdding(true);
-      
-      // Optimistic UI: Add situations to state immediately
-      const baseTimestamp = Date.now();
-      const newSituations = items
-        .filter(title => title.trim())
-        .map((title, i) => ({
-          id: `situation_${baseTimestamp}_${i}_${Math.random().toString(36).substr(2, 6)}`,
-          title: title.trim(),
-          order: baseTimestamp + i,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          beforeAfterContent: ''
-        }));
-      
-      // Update UI immediately
-      setSituations(prev => [...newSituations, ...prev]);
+      // 1. Create situations in DB and get them back with permanent IDs
+      const newSituations = await createMultipleSituations(items);
+      console.log('✅ Received new situations from DB:', newSituations);
+
+      // 2. Update UI state with the permanent data
+      const situationsWithContent = newSituations.map(s => ({ ...s, beforeAfterContent: '' }));
+      setSituations(prev => [...situationsWithContent, ...prev]);
+
+      toast.success(`Created ${items.length} situation${items.length !== 1 ? 's' : ''}`);
+    } catch (error) {
+      console.error('❌ Error creating situations:', error);
+      toast.error('Failed to create situations. Please try again.');
+    } finally {
+      // 3. Close modal and reset loading states
       setBulkAddModal(null);
       setIsBulkAdding(false);
-      toast.success(`Created ${items.length} situation${items.length !== 1 ? 's' : ''}`);
-      
-      // Create in database in background
-      createMultipleSituations(items).catch((error) => {
-        // Revert optimistic update on error
-        console.error('Error creating situations:', error);
-        toast.error('Failed to create situations - reverting changes');
-        // Reload to get correct state
-        loadSituations();
-      });
-    } catch (error) {
-      console.error('Error creating situations:', error);
-      toast.error('Failed to create situations');
-      setIsBulkAdding(false);
+      setIsAnyModalSubmitting(false);
     }
   };
 
   // Handle edit situation
-  const handleEditSubmit = async (title: string) => {
-    if (!editModal) return;
+  const handleEditSubmit = async (newTitle: string) => {
+    console.log('🔄 EditModal submit started');
+    console.log('🔒 Checking global modal submission lock:', isAnyModalSubmitting);
     
+    // Prevent multiple modal submissions
+    if (isAnyModalSubmitting) {
+      console.log('⚠️ Another modal is already submitting, blocking this submission');
+      return;
+    }
+    
+    if (!editModal) return;
+
     try {
+      setIsAnyModalSubmitting(true);
       setIsEditing(true);
-      await updateSituation(editModal.id, { title });
-      toast.success('Situation updated');
+      
+      if (editModal.type === 'situation') {
+        await updateSituation(editModal.id, { title: newTitle });
+        setSituations(prev => prev.map(s => 
+          s.id === editModal.id ? { ...s, title: newTitle } : s
+        ));
+        toast.success('Situation updated');
+      }
+      
       setEditModal(null);
-      await loadSituations();
+      console.log('✅ EditModal submit completed');
     } catch (error) {
-      console.error('Error updating situation:', error);
-      toast.error('Failed to update situation');
+      console.error('❌ Error updating:', error);
+      toast.error('Failed to update');
     } finally {
       setIsEditing(false);
+      setIsAnyModalSubmitting(false);
     }
   };
 
   // Handle delete situation
   const handleDeleteConfirm = async () => {
+    console.log('🔄 DeleteModal confirm started');
+    console.log('🔒 Checking global modal submission lock:', isAnyModalSubmitting);
+    
+    // Prevent multiple modal submissions
+    if (isAnyModalSubmitting) {
+      console.log('⚠️ Another modal is already submitting, blocking this submission');
+      return;
+    }
+    
     if (!deleteConfirm) return;
     
     const situationToDelete = deleteConfirm;
     
     try {
-      // Optimistic UI: Remove from state immediately
+      setIsDeletingSituation(true);
+      
+      // Delete from database FIRST
+      await deleteSituation(situationToDelete.id);
+      
+      // Only update UI after successful database operation
       setSituations(prev => prev.filter(s => s.id !== situationToDelete.id));
       setDeleteConfirm(null);
-      
-      // Show success immediately
       toast.success('Situation deleted');
-      
-      // Delete from database in background
-      await deleteSituation(situationToDelete.id);
     } catch (error) {
       console.error('Error deleting situation:', error);
       toast.error('Failed to delete situation');
-      
-      // Revert optimistic update on error by reloading
-      await loadSituations();
+      setDeleteConfirm(null);
+    } finally {
+      setIsDeletingSituation(false);
     }
   };
 
   // Handle before/after items save
   const handleBeforeAfterSubmit = async (content: string) => {
-    if (!beforeAfterModal) return;
+    console.log('🔄 BeforeAfterModal submit started');
+    console.log('🔒 Checking global modal submission lock:', isAnyModalSubmitting);
     
+    // Prevent multiple modal submissions
+    if (isAnyModalSubmitting) {
+      console.log('⚠️ Another modal is already submitting, blocking this submission');
+      return;
+    }
+    
+    console.log('📝 Modal situation ID:', beforeAfterModal?.situationId);
+    console.log('📄 Content to save:', content.substring(0, 100) + '...');
+    
+    if (!beforeAfterModal) return;
+
     try {
+      setIsAnyModalSubmitting(true);
       setIsSavingBeforeAfter(true);
       
-      // Validate content
-      const validation = validateBulletListContent(content);
-      if (!validation.isValid) {
-        toast.error(`Invalid format: ${validation.errors[0]}`);
-        return;
-      }
-      
-      // Parse content
+      // Parse the content into before and after items
       const parsedData = parseBulletListContent(content);
+      console.log('📊 Parsed data:', parsedData);
       
-      // Save to database
+      // Save the before/after items
       await saveBeforeAfterItemsFromContent(beforeAfterModal.situationId, parsedData);
       
-      toast.success('Before & After items saved');
+      // Close modal and reload situations
       setBeforeAfterModal(null);
+      console.log('🔄 Reloading situations after save...');
+      console.log('🔍 RELOAD: About to call loadSituations...');
       await loadSituations();
+      console.log('✅ UI refresh completed!');
     } catch (error) {
       console.error('Error saving before/after items:', error);
       toast.error('Failed to save before/after items');
     } finally {
       setIsSavingBeforeAfter(false);
+      setIsAnyModalSubmitting(false);
     }
   };
 
   // Handle opening before/after modal for editing
   const handleEditBeforeAfter = (situationId: string, situationTitle: string, existingContent?: string) => {
+    // Close all other modals first to prevent conflicts
+    setBulkAddModal(null);
+    setEditModal(null);
+    setDeleteConfirm(null);
+    
     // Use existing content if available, otherwise default to '1. '
     setBeforeAfterModal({
       situationId,
@@ -363,11 +414,18 @@ export default function SituationsPage() {
                           </div>
                         ) : (
                           <button
-                            onClick={() => setBeforeAfterModal({
-                              situationId: situation.id,
-                              situationTitle: situation.title,
-                              initialContent: '1. '
-                            })}
+                            onClick={() => {
+                              // Close all other modals first to prevent conflicts
+                              setBulkAddModal(null);
+                              setEditModal(null);
+                              setDeleteConfirm(null);
+                              
+                              setBeforeAfterModal({
+                                situationId: situation.id,
+                                situationTitle: situation.title,
+                                initialContent: '1. '
+                              });
+                            }}
                             className="w-full bg-gray-50 hover:bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center transition-colors"
                           >
                             <Plus size={24} className="mx-auto text-gray-400 mb-2" />
@@ -385,9 +443,20 @@ export default function SituationsPage() {
         )}
       </div>
 
-      {/* Modals */}
+      {/* Modals - Only one modal can be open at a time */}
       <AnimatePresence>
-        {bulkAddModal && (
+        {beforeAfterModal && (
+          <BeforeAfterModal
+            isOpen={true}
+            situationTitle={beforeAfterModal.situationTitle}
+            initialContent={beforeAfterModal.initialContent}
+            onSubmit={handleBeforeAfterSubmit}
+            onClose={() => setBeforeAfterModal(null)}
+            isLoading={isSavingBeforeAfter}
+          />
+        )}
+
+        {!beforeAfterModal && bulkAddModal && (
           <BulkAddModal
             isOpen={true}
             type={bulkAddModal.type}
@@ -398,7 +467,7 @@ export default function SituationsPage() {
           />
         )}
 
-        {editModal && (
+        {!beforeAfterModal && !bulkAddModal && editModal && (
           <EditModal
             isOpen={true}
             type={editModal.type}
@@ -409,24 +478,14 @@ export default function SituationsPage() {
           />
         )}
 
-        {deleteConfirm && (
+        {!beforeAfterModal && !bulkAddModal && !editModal && deleteConfirm && (
           <DeleteModal
             isOpen={true}
             type={deleteConfirm.type}
             title={deleteConfirm.title}
             onConfirm={handleDeleteConfirm}
             onClose={() => setDeleteConfirm(null)}
-          />
-        )}
-
-        {beforeAfterModal && (
-          <BeforeAfterModal
-            isOpen={true}
-            situationTitle={beforeAfterModal.situationTitle}
-            initialContent={beforeAfterModal.initialContent}
-            onSubmit={handleBeforeAfterSubmit}
-            onClose={() => setBeforeAfterModal(null)}
-            isLoading={isSavingBeforeAfter}
+            isLoading={isDeletingSituation}
           />
         )}
       </AnimatePresence>
